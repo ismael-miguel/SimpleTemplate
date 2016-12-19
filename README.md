@@ -48,32 +48,64 @@ Anything outside those is considered output.
 ###The commands
 
  - `/`
-     This command doesn't receive any data.
+ 
+    This command doesn't receive any data.
 	 
-	 It is used to specify the end of `if`, `for` and `each`.
+    It is used to specify the end of `if`, `for` and `each`.
+    
+    It isn't required, but it is recommended since it allows you to define a scope for those commands.
+    
  - `if`
+ 
      It is used for a condition.
 	 
-	 Structure: `if <val>[ has [not] <val>|is[n't| not][equal[ to]|lower[ than]|greater[ than]] <val>]`. Anything between `[square brackest]` is optional.
+     Structure: `if <val>[ has [not] <val>|is[n't| not][equal[ to]|lower[ than]|greater[ than]] <val>]`. Anything between `[square brackest]` is optional.
 	 
-	 `if <val> has` -> Sees if a particular key exists on `<val>`
+     `if <val> has` -> Sees if a particular key exists on `<val>`
 	 
-	 `if <val> is ...` -> Performs a single boolean operation on `<val>`.
+     `if <val> is ...` -> Performs a single boolean operation on `<val>`.
+     
  - `else`
+ 
      Just a simple `else` statement.
+     
  - `each`
+ 
      Loops over `<val>`. The structure is equal to PHP.
+     
  - `for`
-     Strucutre: `for <val> [<start>..]<end>[ step <steps>]`
+ 
+    Strucutre: `for <val> [<start>..]<end>[ step <steps>]`
 	 
-	 These values will be fed to the PHP `range` function, which then runs a single `foreach`.
+    These values will be fed to the PHP `range` function, which then runs a single `foreach`.
+    
  - `set`
-     Strucutre: `set <var> <value>[, <values>]`
+ 
+    Strucutre: `set <var> <value>[, <values>]`
 	 
-     Defined a value to a variable. To create an array, separate the values with commas.
+    Defined a value to a variable. To create an array, separate the values with commas.
 	 
-	 The values from the array are accessed with `<array>.<key>`.
+    The values from the array are accessed with `<array>.<key>`.
+    
  - `global`
+ 
     Strucutre: `global <save_var> <global_var_name>`
-	 
- 	Fetches the value from the var `$GLOBALS` and stores on `<save_var>`.
+    
+    Fetches the value from the var `$GLOBALS` and stores on `<save_var>`.
+    
+ - `call`
+ 
+    Strucutre: `call <function> [into <var>][value[, values]]`
+    
+    Calls a function with the provided values, storing the result into the defined variable.
+    
+ - `php`
+ 
+     Strucutre: `php <snippet>`
+     
+     Simply runs the `<snippet>` directly.
+     
+     You can use the variable `$DATA` to access everything you need.
+    
+
+More changes may come (a `while` loop would be a good idea) in the future.
