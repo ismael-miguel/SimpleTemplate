@@ -11,7 +11,7 @@ The performance of it isn't great, but works fine **as far as I know**.
 
 1- You need to load a template code:
 
-	$template = new SimpleTemplate('<code>');
+	$template = new SimpleTemplate('{@if argv.0}Hello world!{@else}Boo!!!');
 	
 	//or
 	$template = new SimpleTemplate::fromFile($path);
