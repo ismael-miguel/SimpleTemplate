@@ -29,7 +29,7 @@ If you are curious about the generated PHP:
 
 	echo $template->getPHP($arguments);
 
-I recommend you to do not look at it. In there lies madness and **bad** code. Stay away from it.
+I recommend you to do not look at it. In there lies madness and **bad** code. Stay away from it! BEWARE!!! **BEWARE!!!1*
 
 ##How it works
 
@@ -69,6 +69,8 @@ Anything outside those is considered output.
  
      Just a simple `else` statement.
      
+     If you add an `if`, all the rules before apply
+     
  - `each`
  
      Loops over `<val>`. The structure is equal to PHP.
@@ -78,6 +80,8 @@ Anything outside those is considered output.
     Strucutre: `for <val> [<start>..]<end>[ step <steps>]`
 	 
     These values will be fed to the PHP `range` function, which then runs a single `foreach`.
+    
+    The `range` is "compiled" on run-time, to allow to use variables as the values.
     
  - `set`
  
