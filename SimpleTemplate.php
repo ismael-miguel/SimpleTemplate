@@ -3,13 +3,20 @@
 	class SimpleTemplate {
 		
 		private static $var_name = '';
+		private static $regex = array(
+			'var' => '(?:\w*(?:\.\w*)?)',
+			'value' => '(?:(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)',
+			'var_value' => '(?:(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false|\w*(?:\.\w*)?)'
+		);
 		
 		private $data = array();
 		
 		private $php = '';
 		
 		private static function render_var($name = null){
-			return '$' . self::$var_name . ($name ? '[\'' . join('\'][\'', explode('.', $name)) . '\']' : '');
+			$var = '$' . self::$var_name . ($name ? '[\'' . join('\'][\'', explode('.', $name)) . '\']' : '');
+			
+			return '(isset(' . $var . ')?' . $var . ':null)';
 		}
 		
 		private static function split_values($values, $delimiter = '\s*,\s*'){
@@ -28,7 +35,7 @@
 		}
 		
 		private static function parse_value($value){
-			return preg_match('@^(?:(?:[^"]|"[^"]*")|\d*(?:\.\d*)?|true|false)$@', $value) ? $value : self::render_var($value);
+			return preg_match('@^' . self::$regex['value'] . '$@', $value) ? $value : self::render_var($value);
 		}
 		
 		function __construct($str){
@@ -44,11 +51,12 @@
 				'/' => function()use(&$brackets){
 					if($brackets > 0)
 					{
+						--$brackets;
+						
 						return '}';
 					}
 					else
 					{
-						--$brackets;
 						return '';
 					}
 				},
@@ -58,7 +66,7 @@
 				'if' => function($data)use(&$brackets){
 					if(
 						!preg_match(
-							'@(\w+|\d+|"[^"]*")\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)\s*than|equal(?:\s*to)?))?|has)\s*(\w*))?@',
+							'@(' . self::$regex['var'] . ')\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)\s*than|equal(?:\s*to)?))?|has)\s*(' . self::$regex['var_value'] . '))?@',
 							$data, $bits
 						)
 					)
@@ -107,28 +115,39 @@
 						return 'if(' . self::parse_value($bits[1]) . '){';
 					}
 				},
-				'else' => function(){
-					return '}else{';
+				'else' => function($data)use(&$brackets, &$replacement){
+					$data = explode(' ', $data, 2);
+					
+					if($data[0] === 'if')
+					{
+						--$brackets;
+					
+						return '}else ' . $replacement['if']($data[1]);
+					}
+					else
+					{
+						return '}else{';
+					}
 				},
 				'each' => function($data)use(&$brackets){
 					++$brackets;
 					
-					return 'foreach(' . preg_replace('@\b(?!as)(\w+(?:\.\w+)?)\b@', self::render_var('$0'), $data) . '){';
+					return 'foreach(' . preg_replace('@\b(?!as)(' . self::$regex['var'] . ')\b@', self::render_var('$0'), $data) . '){';
 				},
 				'for' => function($data)use(&$brackets){
 					++$brackets;
 					
 					return preg_replace_callback(
-						'@(?<var>\w+(?:\.\w+)?)\s*(?<start>[+\-]?\d+)\s*(?:..(?<end>[+\-]?\d+))?(?:\s*step\s*(?<step>[+\-]?\d+))?@',
+						'@(?<var>' . self::$regex['var'] . ')\s*(?<start>' . self::$regex['var_value'] . ')\s*(?:..(?<end>' . self::$regex['var_value'] . '))?(?:\s*step\s*(?<step>' . self::$regex['var_value'] . '))?@',
 						function($matches){
 						
 							$values = array(
-								'start' => isset($matches['start']) && isset($matches['end']) ? +$matches['start']: 1,
-								'end' => isset($matches['end']) ? +$matches['end']: +$matches['start'],
-								'step' => isset($matches['step']) ? abs($matches['step']): 1
+								'start' => isset($matches['start']) && isset($matches['end']) ? self::parse_value($matches['start']): 1,
+								'end' => isset($matches['end']) ? self::parse_value($matches['end']): self::parse_value($matches['start']),
+								'step' => isset($matches['step']) ? self::parse_value($matches['step']): 1
 							);
 							
-							return 'foreach(' . var_export(range($values['start'], $values['end'], $values['step']), true) . ' as ' .self::render_var($matches['var']) . '){';
+							return 'foreach(range(' . $values['start'] . ',' . $values['end'] . ', abs(' . $values['step'] . ')) as ' .self::render_var($matches['var']) . '){';
 						},
 						$data
 					);
@@ -154,10 +173,11 @@
 				},
 				'global' => function($data){
 					$data = self::split_values($data, ' ');
+					
 					return self::render_var(array_shift($data)) . ' = $GLOBALS[\'' . join('\'][\'', $data) . '\'];';
 				},
 				'call' => function($data){
-					preg_match('@^\s*(?<fn>\w+)\s*(?:into\s*(?<into>\w+(?:\.\w+)?)\s*)?(?<args>.*?)$@', $data, $data);
+					preg_match('@^\s*(?<fn>\w+)\s*(?:into\s*(?<into>' . self::$regex['var'] . ')\s*)?(?<args>.*?)$@', $data, $data);
 					
 					return ($data['into'] ? self::render_var($data['into']) . ' = ' : '') . $data['fn'] . '(' . implode(',', self::parse_values($data['args'])) . ');';
 				},
