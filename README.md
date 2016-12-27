@@ -77,7 +77,7 @@ Anything outside those is considered output.
      
  - `for`
  
-    Strucutre: `for <val> [<start>..]<end>[ step <steps>]`
+    Strucutre: `for <val>[ from <start>] to <end>[ step <steps>]`
 	 
     These values will be fed to the PHP `range` function, which then runs a single `foreach`.
     
