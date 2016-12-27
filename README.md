@@ -45,7 +45,15 @@ Each command has a different structure for the `arguments` bit.
 
 Anything outside those is considered output.
 
-###The commands
+####Values and variables:
+
+A variable is any alphanumeric string that doesn't have a special meaning. Arrays' items can be accessed by writting the key after a period `like.this.example.here`.
+
+A value is everything else, like numbers, `"strings"`, `true` and `false`. Strings **must** be with double-quotes.
+
+The variable `argv` will contain the arguments passed while `argc` will have the number of arguments.
+
+###The commands:
 
  - `/`
  
@@ -54,6 +62,12 @@ Anything outside those is considered output.
     It is used to specify the end of `if`, `for` and `each`.
     
     It isn't required, but it is recommended since it allows you to define a scope for those commands.
+
+ - `echo`
+ 
+     Outputs the values and the contents of the variables. Multiple arguments are separated with commas.
+     
+     Arrays are automatically presented, but joined without anything.
     
  - `if`
  
