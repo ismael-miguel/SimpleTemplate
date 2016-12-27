@@ -64,10 +64,12 @@ The variable `argv` will contain the arguments passed while `argc` will have the
     It isn't required, but it is recommended since it allows you to define a scope for those commands.
 
  - `echo`
+     
+     Structure: `echo [separator <value> ]<value>[, <values>]`
  
      Outputs the values and the contents of the variables. Multiple arguments are separated with commas.
      
-     Arrays are automatically presented, but joined without anything.
+     Arrays are automatically flatened, being separated by the value of `separator`, if present.
     
  - `if`
  
