@@ -142,7 +142,9 @@
 				'each' => function($data)use(&$brackets){
 					++$brackets;
 					
-					return 'foreach(' . preg_replace('@\b(?!as)(' . self::$regex['var'] . ')\b@', self::render_var('$0', false), $data) . '){';
+					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*as\s*(?<as>' . self::$regex['var'] . ')(?:\s*key\s*(?<key>' . self::$regex['var'] . ')\s*)?$@', $data, $bits);
+					
+					return 'foreach((array)' . self::render_var($bits['var']) . ' as ' . (isset($bits['key']) ? self::render_var($bits['key'], false) . ' => ': '') . self::render_var($bits['as'], false) . '){';
 				},
 				'for' => function($data)use(&$brackets){
 					++$brackets;
@@ -157,7 +159,7 @@
 								'step' => isset($matches['step']) ? self::parse_value($matches['step']) : '1'
 							);
 							
-							return 'foreach(range(' . $values['start'] . ', ' . $values['end'] . ', abs(' . $values['step'] . ')) as ' .self::render_var($matches['var'], false) . '){';
+							return 'foreach(range(' . $values['start'] . ', ' . $values['end'] . ', abs(' . $values['step'] . ')) as ' . self::render_var($matches['var'], false) . '){';
 						},
 						$data
 					);
@@ -187,6 +189,9 @@
 				},
 				'php' => function($data){
 					return '?><?php ' . $data;
+				},
+				'return' => function($data){
+					return 'return ' . ($data ? self::render_var($data): '').';';
 				}
 			);
 			
@@ -198,7 +203,7 @@
 				array('', ''),
 				"echo <<<'" . self::$var_name . "'\r\n"
 					. preg_replace_callback(
-						'~{@(echo|if|else|for|each|set|call|global|php|/)(?:\s*([^}]+))?}~i',
+						'~{@(echo|if|else|for|each|set|call|global|php|return|/)(?:\s*([^}]+))?}~i',
 						function($matches)use(&$replacement){
 							return "\r\n" . self::$var_name . ";\r\n"
 								. $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null)
@@ -247,5 +252,9 @@
 		
 		static function fromFile($path){
 			return new self(file_get_contents($path));
+		}
+		
+		static function fromString($string){
+			return new self($string);
 		}
 	}
