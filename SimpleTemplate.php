@@ -11,7 +11,14 @@
 		
 		private $data = array();
 		
-		private $php = '';
+		// http://stackoverflow.com/a/1320156
+		private $php = 'if(!function_exists(\'array_flat\'))
+{function array_flat(array $array) {
+    $return = array();
+    array_walk_recursive($array, function($a)use(&$return){$return[]=$a;});
+    return $return;
+}}
+';
 		
 		private static function render_var($name = null, $safe = true){
 			$var = '$' . self::$var_name . ($name ? '[\'' . join('\'][\'', explode('.', $name)) . '\']' : '');
@@ -61,7 +68,7 @@
 					}
 				},
 				'echo' => function($data){
-					return 'echo implode(\'\', (array)' . implode('), implode(\'\', (array)', self::parse_values($data)) . ');';
+					return 'echo implode(\'\', array_flat((array)' . implode(')), implode(\'\', array_flat((array)', self::parse_values($data)) . '));';
 				},
 				'if' => function($data)use(&$brackets){
 					if(
@@ -180,7 +187,7 @@
 				}
 			);
 			
-			$this->php = str_replace(
+			$this->php .= str_replace(
 				array(
 					"echo <<<'" . self::$var_name . "'\r\n\r\n" . self::$var_name . ";",
 					"\r\n" . self::$var_name . ";\r\necho <<<'" . self::$var_name . "'"
