@@ -93,7 +93,7 @@ The variable `argv` will contain the arguments passed while `argc` will have the
      
  - `for`
  
-    Strucutre: `for <val>[ from <start>] to <end>[ step <steps>]`
+    Structure: `for <val>[ from <start>] to <end>[ step <steps>]`
 	 
     These values will be fed to the PHP `range` function, which then runs a single `foreach`.
     
@@ -101,7 +101,7 @@ The variable `argv` will contain the arguments passed while `argc` will have the
     
  - `set`
  
-    Strucutre: `set <var> <value>[, <values>]`
+    Structure: `set <var> <value>[, <values>]`
 	 
     Defined a value to a variable. To create an array, separate the values with commas.
 	 
@@ -109,19 +109,19 @@ The variable `argv` will contain the arguments passed while `argc` will have the
     
  - `global`
  
-    Strucutre: `global <save_var> <global_var_name>`
+    Structure: `global <save_var> <global_var_name>`
     
     Fetches the value from the var `$GLOBALS` and stores on `<save_var>`.
     
  - `call`
  
-    Strucutre: `call <function> [into <var>][value[, values]]`
+    Structure: `call <function> [into <var>][value[, values]]`
     
     Calls a function with the provided values, storing the result into the defined variable.
     
  - `php`
  
-     Strucutre: `php <snippet>`
+     Structure: `php <snippet>`
      
      Simply runs the `<snippet>` directly.
      
