@@ -69,7 +69,9 @@
 				'echo' => function($data){
 					preg_match('@^(?:separator\s+(?<separator>' . self::$regex['var_value'] . ')\s+)?(?<data>.*)$@', $data, $bits);
 					
-					return 'echo implode(' . ($bits['separator'] ? self::parse_value($bits['separator']): '\'\'') . ', $array_flat((array)' . implode(')), implode(' . ($bits['separator'] ? self::parse_value($bits['separator']): '\'\'') . ', $array_flat((array)', self::parse_values($bits['data'])) . '));';
+					$separator = $bits['separator'] ? self::parse_value($bits['separator']): '\'\'';
+					
+					return 'echo implode(' . $separator . ', $array_flat((array)' . implode(')), implode(' . $separator . ', $array_flat((array)', self::parse_values($bits['data'])) . '));';
 				},
 				'if' => function($data)use(&$brackets){
 					if(
@@ -166,7 +168,7 @@
 					
 					if(count($values) > 1)
 					{
-						return self::render_var(array_shift($bits), false) . ' = array(' . implode(',', $values) . ');';
+						return self::render_var($bits[0], false) . ' = array(' . implode(',', $values) . ');';
 					}
 					else
 					{
