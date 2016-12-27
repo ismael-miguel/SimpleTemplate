@@ -67,7 +67,9 @@
 					}
 				},
 				'echo' => function($data){
-					return 'echo implode(\'\', $array_flat((array)' . implode(')), implode(\'\', $array_flat((array)', self::parse_values($data)) . '));';
+					preg_match('@^(?:separator\s+(?<separator>' . self::$regex['var_value'] . ')\s+)?(?<data>.*)$@', $data, $bits);
+					
+					return 'echo implode(' . ($bits['separator'] ? self::parse_value($bits['separator']): '\'\'') . ', $array_flat((array)' . implode(')), implode(' . ($bits['separator'] ? self::parse_value($bits['separator']): '\'\'') . ', $array_flat((array)', self::parse_values($bits['data'])) . '));';
 				},
 				'if' => function($data)use(&$brackets){
 					if(
