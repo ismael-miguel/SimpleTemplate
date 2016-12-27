@@ -70,6 +70,12 @@ The variable `argv` will contain the arguments passed while `argc` will have the
      Outputs the values and the contents of the variables. Multiple arguments are separated with commas.
      
      Arrays are automatically flatened, being separated by the value of `separator`, if present.
+     
+ - `return`
+ 
+     Structure: `return[ <value>]`
+     
+     Returns the value and quits. The value returned will also be returned by `SimpleTemplate::render()`, making it available outside the template code.
     
  - `if`
  
@@ -89,7 +95,11 @@ The variable `argv` will contain the arguments passed while `argc` will have the
      
  - `each`
  
-     Loops over `<val>`. The structure is equal to PHP.
+     Structure: `each <array> as <var>[ key <key>]`
+     
+     Loops over each element in the array `<array>`.
+     
+     Each value will be available on the variable `<var>` (you can use array indexes like `argv.0` too).
      
  - `for`
  
