@@ -12,12 +12,11 @@
 		private $data = array();
 		
 		// http://stackoverflow.com/a/1320156
-		private $php = 'if(!function_exists(\'array_flat\'))
-{function array_flat(array $array) {
-    $return = array();
-    array_walk_recursive($array, function($a)use(&$return){$return[]=$a;});
-    return $return;
-}}
+		private $php = '$array_flat = function(array $array) {
+	$return = array();
+	array_walk_recursive($array, function($a)use(&$return){$return[]=$a;});
+	return $return;
+};
 ';
 		
 		private static function render_var($name = null, $safe = true){
@@ -68,7 +67,7 @@
 					}
 				},
 				'echo' => function($data){
-					return 'echo implode(\'\', array_flat((array)' . implode(')), implode(\'\', array_flat((array)', self::parse_values($data)) . '));';
+					return 'echo implode(\'\', $array_flat((array)' . implode(')), implode(\'\', $array_flat((array)', self::parse_values($data)) . '));';
 				},
 				'if' => function($data)use(&$brackets){
 					if(
@@ -238,7 +237,8 @@
 		}
 		
 		function render(){
-			return eval(call_user_func_array(array($this, 'getPHP'), func_get_args()));
+			$fn = eval('return function(){' . call_user_func_array(array($this, 'getPHP'), func_get_args()) . '};');
+			return $fn();
 		}
 		
 		static function fromFile($path){
