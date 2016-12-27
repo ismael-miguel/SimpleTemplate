@@ -29,7 +29,7 @@ If you are curious about the generated PHP:
 
 	echo $template->getPHP($arguments);
 
-I recommend you to do not look at it. In there lies madness and **bad** code. Stay away from it! BEWARE!!! **BEWARE!!!1*
+I recommend you to do not look at it. In there lies madness and **bad** code. Stay away from it! BEWARE!!! **BEWARE!!!1**
 
 ##How it works
 
