@@ -6,17 +6,17 @@
 		private static $regex = array(
 			'var' => '(?:\w*(?:\.\w*)?)',
 			'value' => '(?:(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)',
-			'var_value' => '(?:(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false|\w*(?:\.\w*)?)'
+			'var_value' => '(?:\w*(?:\.\w*)?|(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)'
 		);
 		
 		private $data = array();
 		
 		private $php = '';
 		
-		private static function render_var($name = null){
+		private static function render_var($name = null, $safe = true){
 			$var = '$' . self::$var_name . ($name ? '[\'' . join('\'][\'', explode('.', $name)) . '\']' : '');
 			
-			return '(isset(' . $var . ')?' . $var . ':null)';
+			return $safe ? '(isset(' . $var . ')?' . $var . ':null)' : $var;
 		}
 		
 		private static function split_values($values, $delimiter = '\s*,\s*'){
@@ -132,43 +132,37 @@
 				'each' => function($data)use(&$brackets){
 					++$brackets;
 					
-					return 'foreach(' . preg_replace('@\b(?!as)(' . self::$regex['var'] . ')\b@', self::render_var('$0'), $data) . '){';
+					return 'foreach(' . preg_replace('@\b(?!as)(' . self::$regex['var'] . ')\b@', self::render_var('$0', false), $data) . '){';
 				},
 				'for' => function($data)use(&$brackets){
 					++$brackets;
 					
 					return preg_replace_callback(
-						'@(?<var>' . self::$regex['var'] . ')\s*(?<start>' . self::$regex['var_value'] . ')\s*(?:..(?<end>' . self::$regex['var_value'] . '))?(?:\s*step\s*(?<step>' . self::$regex['var_value'] . '))?@',
+						'@(?<var>' . self::$regex['var'] . ')(?:\s*from\s*(?<start>' . self::$regex['var_value'] . '))?(?:\s*to\s*(?<end>' . self::$regex['var_value'] . '))(?:\s*step\s*(?<step>' . self::$regex['var_value'] . '))?@',
 						function($matches){
 						
 							$values = array(
-								'start' => isset($matches['start']) && isset($matches['end']) ? self::parse_value($matches['start']): 1,
-								'end' => isset($matches['end']) ? self::parse_value($matches['end']): self::parse_value($matches['start']),
-								'step' => isset($matches['step']) ? self::parse_value($matches['step']): 1
+								'start' => isset($matches['start']) && $matches['start'] !== '' ? self::parse_value($matches['start']) : '0',
+								'end' => isset($matches['end']) ? self::parse_value($matches['end']) : self::parse_value($matches['start']),
+								'step' => isset($matches['step']) ? self::parse_value($matches['step']) : '1'
 							);
 							
-							return 'foreach(range(' . $values['start'] . ',' . $values['end'] . ', abs(' . $values['step'] . ')) as ' .self::render_var($matches['var']) . '){';
+							return 'foreach(range(' . $values['start'] . ', ' . $values['end'] . ', abs(' . $values['step'] . ')) as ' .self::render_var($matches['var'], false) . '){';
 						},
 						$data
 					);
 				},
 				'set' => function($data){
-					$values = self::split_values($data, ' ');
+					$bits = explode(' ', $data, 2);
+					$values = self::parse_values($bits[1]);
 					
-					if(count($values) > 2)
+					if(count($values) > 1)
 					{
-						$output = self::render_var(array_shift($values)) . ' = array(';
-						
-						foreach($values as $value)
-						{
-							$output .= self::parse_value(trim($value, ', ')) . ',';
-						}
-						
-						return $output . ');';
+						return self::render_var(array_shift($bits), false) . ' = array(' . implode(',', $values) . ');';
 					}
 					else
 					{
-						return self::render_var($values[0]) . ' = ' . self::parse_value($values[1]) . ';';
+						return self::render_var($bits[0], false) . ' = ' . self::parse_value($bits[1]) . ';';
 					}
 				},
 				'global' => function($data){
