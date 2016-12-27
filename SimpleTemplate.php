@@ -73,6 +73,9 @@
 					
 					return 'echo implode(' . $separator . ', $array_flat((array)' . implode(')), implode(' . $separator . ', $array_flat((array)', self::parse_values($bits['data'])) . '));';
 				},
+				'echol' => function($data)use(&$replacement){
+					return $replacement['echo']($data) . 'echo PHP_EOL;';
+				},
 				'if' => function($data)use(&$brackets){
 					if(
 						!preg_match(
@@ -191,7 +194,7 @@
 					return '?><?php ' . $data;
 				},
 				'return' => function($data){
-					return 'return ' . ($data ? self::render_var($data): '').';';
+					return 'return ' . ($data ? self::parse_value($data): '').';';
 				}
 			);
 			
@@ -203,7 +206,7 @@
 				array('', ''),
 				"echo <<<'" . self::$var_name . "'\r\n"
 					. preg_replace_callback(
-						'~{@(echo|if|else|for|each|set|call|global|php|return|/)(?:\s*([^}]+))?}~i',
+						'~{@(echol?|if|else|for|each|set|call|global|php|return|/)(?:\s*([^}]+))?}~i',
 						function($matches)use(&$replacement){
 							return "\r\n" . self::$var_name . ";\r\n"
 								. $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null)
