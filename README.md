@@ -76,6 +76,12 @@ The variable `argv` will contain the arguments passed while `argc` will have the
      Structure: `return[ <value>]`
      
      Returns the value and quits. The value returned will also be returned by `SimpleTemplate::render()`, making it available outside the template code.
+
+ - `inc`
+ 
+     Structure: `inc[ by <value>] <var>[, <vars>]`
+     
+     Increments all values in the array by `<value>`.
     
  - `if`
  
