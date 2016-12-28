@@ -81,7 +81,7 @@ The variable `argv` will contain the arguments passed while `argc` will have the
  
      It is used for a condition.
 	 
-     Structure: `if <val>[ has [not] <val>|is[n't| not][equal[ to]|lower[ than]|greater[ than]] <val>]`. Anything between `[square brackest]` is optional.
+     Structure: `if <val>[ has [not] <val>|is[ not][equal[ to]|lower[ than]|greater[ than]] <val>]`. Anything between `[square brackets]` is optional.
 	 
      `if <val> has` -> Sees if a particular key exists on `<val>`
 	 
@@ -108,6 +108,12 @@ The variable `argv` will contain the arguments passed while `argc` will have the
     These values will be fed to the PHP `range` function, which then runs a single `foreach`.
     
     The `range` is "compiled" on run-time, to allow to use variables as the values.
+    
+ - `while`
+ 
+    Structure: Same as `if`.
+    
+    Repeats the code inside the block while the value of the condition is true.
     
  - `set`
  
@@ -138,4 +144,4 @@ The variable `argv` will contain the arguments passed while `argc` will have the
      You can use the variable `$DATA` to access everything you need.
     
 
-More changes may come (a `while` loop would be a good idea) in the future.
+More changes may come in the future.
