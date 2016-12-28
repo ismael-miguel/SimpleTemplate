@@ -2,6 +2,8 @@
 
 	class SimpleTemplate {
 		
+		private static $version = 0.1;
+		
 		private static $var_name = '';
 		private static $regex = array(
 			'var' => '(?:\w*(?:\.\w*)?)',
@@ -29,12 +31,12 @@
 			return preg_split('@(' . $delimiter . ')(?=(?:[^"]|"[^"]*")*$)@', $values);
 		}
 		
-		private static function parse_values($values, $delimiter = '\s*,\s*'){
+		private static function parse_values($values, $delimiter = '\s*,\s*', $safe = true){
 			$value_bits = self::split_values($values, $delimiter);
 			
 			foreach($value_bits as $k => $value)
 			{
-				$value_bits[$k] = self::parse_value($value);
+				$value_bits[$k] = self::parse_value($value, $safe);
 			}
 			
 			return $value_bits;
@@ -79,11 +81,10 @@
 			{
 				return self::parse_value($bits[1]);
 			}
-			
 		}
 		
-		private static function parse_value($value){
-			return preg_match('@^' . self::$regex['value'] . '$@', $value) ? $value : self::render_var($value);
+		private static function parse_value($value, $safe = true){
+			return preg_match('@^' . self::$regex['value'] . '$@', $value) ? $value : self::render_var($value, $safe);
 		}
 		
 		function __construct($str){
@@ -195,6 +196,26 @@
 				},
 				'return' => function($data){
 					return 'return ' . ($data ? self::parse_value($data): '').';';
+				},
+				'inc' => function($data){
+					preg_match('@^(?:\s*by\s*(?<by>' . self::$regex['var_value'] . ')\s*)?(?<values>.*?)$@', $data, $bits);
+					$values = self::parse_values($bits['values'], '\s*,\s*', false);
+					$inc = isset($bits['by']) && $bits['by'] !== '' ? self::parse_value($bits['by']): '1';
+					$return = '';
+					
+					foreach($values as $value)
+					{
+						if(!isset($value[0]) || $value[0] !== '$')
+						{
+							continue;
+						}
+						
+						$return .= 'if(gettype(' . $value . ')===\'array\'){
+array_walk_recursive(' . $value . ', function(&$_)use(&$' . self::$var_name . '){return $_+=' . $inc . ';});
+}else{' . $value . '+=' . $inc . ';}';
+					}
+					
+					return $return;
 				}
 			);
 			
@@ -206,7 +227,8 @@
 				array('', ''),
 				"echo <<<'" . self::$var_name . "'\r\n"
 					. preg_replace_callback(
-						'~{@(echol?|if|else|for|while|each|set|call|global|php|return|/)(?:\s*([^}]+))?}~i',
+						// http://stackoverflow.com/a/6464500
+						'~{@(echol?|if|else|for|while|each|set|call|global|php|return|inc|/)(?:\s*(.*?))?}(?=(?:[^"\\]*(?:\\.|"(?:[^"\\]*\\.)*[^"\\]*"))*[^"]*$))~i',
 						function($matches)use(&$replacement){
 							return "\r\n" . self::$var_name . ";\r\n"
 								. $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null)
@@ -244,6 +266,9 @@
 		function getPHP(){
 			$this->data['argv'] = func_get_args();
 			$this->data['argc'] = func_num_args();
+			
+			$this->data['VERSION'] = self::$version;
+			$this->data['EOL'] = PHP_EOL;
 			
 			return '$DATA = ' . var_export($this->data, true) . ';$' . self::$var_name . ' = &$DATA;' . $this->php;
 		}
