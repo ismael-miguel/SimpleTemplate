@@ -40,6 +40,48 @@
 			return $value_bits;
 		}
 		
+		private static function parse_boolean($data){
+			if(
+				!preg_match(
+					'@(' . self::$regex['var_value'] . ')\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?))?|has(?:\s*not)?)\s*(' . self::$regex['var_value'] . '))?@',
+					$data, $bits
+				)
+			)
+			{
+				return '';
+			}
+			
+			$fn = array(
+				'is' => function($data, $var1, $var2){
+					$symbols = array(
+						'' => '===',
+						'equal' => '==',
+						'lower' => '<',
+						'greater' => '>'
+					);
+					
+					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater)?\s*(?:to|than)?@', $data, $bits);
+					
+					return (isset($bits['not']) && $bits['not'] !== '' ? '!': '') . '(' . $var1 . ' ' . $symbols[isset($bits['operation']) ? $bits['operation']: ''] . ' ' . $var2 . ')';
+				},
+				'has' => function($data, $var1, $var2){
+					return ($data === 'not' ? '!': '') . 'array_key_exists((array)' . $var1 . ', ' . $var2 . ')';
+				}
+			);
+			
+			if(isset($bits[3]))
+			{
+				$ops = explode(' ', $bits[2], 2);
+				
+				return $fn[$ops[0]](isset($ops[1]) ? $ops[1]: '', self::parse_value($bits[1]), self::parse_value($bits[3]));
+			}
+			else
+			{
+				return self::parse_value($bits[1]);
+			}
+			
+		}
+		
 		private static function parse_value($value){
 			return preg_match('@^' . self::$regex['value'] . '$@', $value) ? $value : self::render_var($value);
 		}
@@ -77,56 +119,9 @@
 					return $replacement['echo']($data) . 'echo PHP_EOL;';
 				},
 				'if' => function($data)use(&$brackets){
-					if(
-						!preg_match(
-							'@(' . self::$regex['var'] . ')\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)\s*than|equal(?:\s*to)?))?|has)\s*(' . self::$regex['var_value'] . '))?@',
-							$data, $bits
-						)
-					)
-					{
-						return '';
-					}
-					
 					++$brackets;
 					
-					if(isset($bits[3]))
-					{
-						$var1 = self::parse_value($bits[1]);
-						$var2 = self::parse_value($bits[3]);
-						
-						$compare = array(
-							'is' => $var1 . ' === ' . $var2,
-							'isn\'t' => $var1 . ' !== ' . $var2,
-							'is not' => $var1 . ' !== ' . $var2,
-							
-							'is equal' => $var1 . ' == ' . $var2,
-							'isn\'t equal' => $var1 . ' != ' . $var2,
-							'is not equal' => $var1 . ' != ' . $var2,
-							
-							'is greater' => $var1 . ' > ' . $var2,
-							'isn\'t greater' => '!(' . $var1 . ' > ' . $var2 . ')',
-							'is not greater' => '!(' . $var1 . ' > ' . $var2 . ')',
-							'is greater than' => $var1 . ' > ' . $var2,
-							'isn\'t greater than' => '!(' . $var1 . ' > ' . $var2 . ')',
-							'is not greater than' => '!(' . $var1 . ' > ' . $var2 . ')',
-							
-							'is lower' => $var1 . ' < ' . $var2,
-							'isn\'t lower' => '!(' . $var1 . ' < ' . $var2 . ')',
-							'is not lower' => '!(' . $var1 . ' < ' . $var2 . ')',
-							'is lower than' => $var1 . ' < ' . $var2,
-							'isn\'t lower than' => '!(' . $var1 . ' < ' . $var2 . ')',
-							'is not lower than' => '!(' . $var1 . ' < ' . $var2 . ')',
-							
-							'has' => 'array_key_exists((array)' . $var2 . ', ' . $var1 . ')',
-							'has not' => '!array_key_exists((array)' . $var2 . ', ' . $var1 . ')'
-						);
-						
-						return 'if(' . $compare[$bits[2]] . '){';
-					}
-					else
-					{
-						return 'if(' . self::parse_value($bits[1]) . '){';
-					}
+					return 'if(' . self::parse_boolean($data) . '){';
 				},
 				'else' => function($data)use(&$brackets, &$replacement){
 					$data = explode(' ', $data, 2);
@@ -148,6 +143,11 @@
 					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*as\s*(?<as>' . self::$regex['var'] . ')(?:\s*key\s*(?<key>' . self::$regex['var'] . ')\s*)?$@', $data, $bits);
 					
 					return 'foreach((array)' . self::render_var($bits['var']) . ' as ' . (isset($bits['key']) ? self::render_var($bits['key'], false) . ' => ': '') . self::render_var($bits['as'], false) . '){';
+				},
+				'while' => function($data)use(&$brackets){
+					++$brackets;
+					
+					return 'while(' . self::parse_boolean($data) . '){';
 				},
 				'for' => function($data)use(&$brackets){
 					++$brackets;
@@ -188,7 +188,7 @@
 				'call' => function($data){
 					preg_match('@^\s*(?<fn>\w+)\s*(?:into\s*(?<into>' . self::$regex['var'] . ')\s*)?(?<args>.*?)$@', $data, $data);
 					
-					return ($data['into'] ? self::render_var($data['into']) . ' = ' : '') . $data['fn'] . '(' . implode(',', self::parse_values($data['args'])) . ');';
+					return ($data['into'] ? self::render_var($data['into'], false) . ' = ' : '') . $data['fn'] . '(' . implode(',', self::parse_values($data['args'])) . ');';
 				},
 				'php' => function($data){
 					return '?><?php ' . $data;
@@ -206,7 +206,7 @@
 				array('', ''),
 				"echo <<<'" . self::$var_name . "'\r\n"
 					. preg_replace_callback(
-						'~{@(echol?|if|else|for|each|set|call|global|php|return|/)(?:\s*([^}]+))?}~i',
+						'~{@(echol?|if|else|for|while|each|set|call|global|php|return|/)(?:\s*([^}]+))?}~i',
 						function($matches)use(&$replacement){
 							return "\r\n" . self::$var_name . ";\r\n"
 								. $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null)
