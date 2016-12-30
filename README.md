@@ -81,6 +81,12 @@ The variable `argv` will contain the arguments passed while `argc` will have the
      You can also use `{@echol argv}`, to output a line at the end (like `{@echo argv, EOL}`).  
      Combining both into `{@echojl " " argv}` also works.
      
+ - `print`
+ 
+     Strcture: `print[ into <var>] <format>, <value>[, <values>]`
+     
+     This is just a syntax sugar for `{@call printf <format>, <values>}` and for `{@call printf into <var> <formar>,<values>}`.
+     
  - `return`
  
      Structure: `return[ <value>]`
