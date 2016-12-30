@@ -109,6 +109,9 @@
 						return '';
 					}
 				},
+				'//' => function(){
+					return '';
+				},
 				'echo' => function($data){
 					preg_match('@^(?:separator\s+(?<separator>' . self::$regex['var_value'] . ')\s+)?(?<data>.*)$@', $data, $bits);
 					
@@ -247,7 +250,7 @@ $fn=function(&$_){
 				"echo <<<'" . self::$var_name . "'\r\n"
 					. preg_replace_callback(
 						// http://stackoverflow.com/a/6464500
-						'~{@(echoj?l?|if|else|for|while|each|set|call|global|php|return|inc|/)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
+						'~{@(echoj?l?|if|else|for|while|each|set|call|global|php|return|inc|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
 						function($matches)use(&$replacement){
 							return "\r\n" . self::$var_name . ";\r\n"
 								. $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null)
