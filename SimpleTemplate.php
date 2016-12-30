@@ -119,6 +119,12 @@
 				'echol' => function($data)use(&$replacement){
 					return $replacement['echo']($data) . 'echo PHP_EOL;';
 				},
+				'echoj' => function($data)use(&$replacement){
+					return $replacement['echo']('separator ' . $data);
+				},
+				'echojl' => function($data)use(&$replacement){
+					return $replacement['echol']('separator ' . $data);
+				},
 				'if' => function($data)use(&$brackets){
 					++$brackets;
 					
@@ -201,7 +207,22 @@
 					preg_match('@^(?:\s*by\s*(?<by>' . self::$regex['var_value'] . ')\s*)?(?<values>.*?)$@', $data, $bits);
 					$values = self::parse_values($bits['values'], '\s*,\s*', false);
 					$inc = isset($bits['by']) && $bits['by'] !== '' ? self::parse_value($bits['by']): '1';
-					$return = '';
+					$return = 'call_user_func_array(function()use(&$' . self::$var_name . '){
+$fn=function(&$_){
+	switch(gettype($_))
+	{
+		case \'integer\':
+		case \'double\':
+			$_ += ' . $inc . ';
+			break;
+		case \'string\':
+			for($i = 0; $i < ' . $inc . '; $i++)
+			{
+				++$_;
+			}
+			break;
+	}
+};';
 					
 					foreach($values as $value)
 					{
@@ -210,12 +231,10 @@
 							continue;
 						}
 						
-						$return .= 'if(gettype(' . $value . ')===\'array\'){
-array_walk_recursive(' . $value . ', function(&$_)use(&$' . self::$var_name . '){return $_+=' . $inc . ';});
-}else{' . $value . '+=' . $inc . ';}';
+						$return .= 'if(gettype(' . $value . ')===\'array\'){array_walk_recursive(' . $value . ', $fn);}else{$fn(' . $value . ');}';
 					}
 					
-					return $return;
+					return $return . '}, array());';
 				}
 			);
 			
@@ -228,7 +247,7 @@ array_walk_recursive(' . $value . ', function(&$_)use(&$' . self::$var_name . ')
 				"echo <<<'" . self::$var_name . "'\r\n"
 					. preg_replace_callback(
 						// http://stackoverflow.com/a/6464500
-						'~{@(echol?|if|else|for|while|each|set|call|global|php|return|inc|/)(?:\s*(.*?))?}(?=(?:[^"\\]*(?:\\.|"(?:[^"\\]*\\.)*[^"\\]*"))*[^"]*$))~i',
+						'~{@(echoj?l?|if|else|for|while|each|set|call|global|php|return|inc|/)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
 						function($matches)use(&$replacement){
 							return "\r\n" . self::$var_name . ";\r\n"
 								. $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null)
