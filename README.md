@@ -85,7 +85,13 @@ The variable `argv` will contain the arguments passed while `argc` will have the
  
      Structure: `inc[ by <value>] <var>[, <vars>]`
      
-     Increments all values in the array by `<value>`.
+     Increments all values in the array by `<value>`. (Default value of `<by>` is `1`).
+     
+     This also works for strings! Example:
+     
+          {@set i "a test", 1,2,3}{@inc by 3 i}{@echoj " " i}
+     
+     Should output: `a tesw 4 5 6`
     
  - `if`
  
@@ -155,3 +161,19 @@ The variable `argv` will contain the arguments passed while `argc` will have the
     
 
 More changes may come in the future.
+
+<hr>
+
+##Some useless stuff:
+
+It is possible to do **some** code golfing. I do not advise, but it works.
+
+Here's an example, that increments all the values in `argv` by 3, and outputs them separated by a space.
+
+    {@inc by 3 argv}{@echoj " " argv}
+
+Which can be written as:
+
+    {@incby3 argv}{@echoj" " argv}
+
+Some whitespace are optional, as long as it isn't ambiguous.
