@@ -55,6 +55,12 @@ The variable `argv` will contain the arguments passed while `argc` will have the
 
 ###The commands:
 
+ - `//`
+    
+    This is a comment. Just type whatever you wish in front of it.
+    
+    **Warning**: This is **NOT** passed to the PHP code, which will be rendered **without comments**.
+    
  - `/`
  
     This command doesn't receive any data.
