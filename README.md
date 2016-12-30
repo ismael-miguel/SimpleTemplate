@@ -71,6 +71,10 @@ The variable `argv` will contain the arguments passed while `argc` will have the
      
      Arrays are automatically flatened, being separated by the value of `separator`, if present.
      
+     Instead of `{@echo separator " " argv}`, one can use `{@echoj " " argv}`.  
+     You can also use `{@echol argv}`, to output a line at the end (like `{@echo argv, EOL}`).  
+     Combining both into `{@echojl " " argv}` also works.
+     
  - `return`
  
      Structure: `return[ <value>]`
