@@ -184,16 +184,17 @@
 					);
 				},
 				'set' => function($data){
-					$bits = explode(' ', $data, 2);
-					$values = self::parse_values($bits[1]);
+					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?<values>.*?)$@', $data, $bits);
+					
+					$values = self::parse_values($bits['values']);
 					
 					if(count($values) > 1)
 					{
-						return self::render_var($bits[0], false) . ' = array(' . implode(',', $values) . ');';
+						return self::render_var($bits['var'], false) . ' = array(' . implode(',', $values) . ');';
 					}
 					else
 					{
-						return self::render_var($bits[0], false) . ' = ' . self::parse_value($bits[1]) . ';';
+						return self::render_var($bits['var'], false) . ' = ' . self::parse_value($bits['values']) . ';';
 					}
 				},
 				'global' => function($data){
