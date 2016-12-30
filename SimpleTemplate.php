@@ -2,7 +2,7 @@
 
 	class SimpleTemplate {
 		
-		private static $version = 0.1;
+		private static $version = '0.1';
 		
 		private static $var_name = '';
 		private static $regex = array(
@@ -128,6 +128,12 @@
 				'echojl' => function($data)use(&$replacement){
 					return $replacement['echol']('separator ' . $data);
 				},
+				'echof' => function($data)use(&$replacement){
+					return $replacement['echol']('separator ' . $data);
+				},
+				'print' => function($data)use(&$replacement){
+					return $replacement['call']((strpos('into', $data)===0? 's' : '') . 'printf ' . $data);
+				},
 				'if' => function($data)use(&$brackets){
 					++$brackets;
 					
@@ -250,7 +256,7 @@ $fn=function(&$_){
 				"echo <<<'" . self::$var_name . "'\r\n"
 					. preg_replace_callback(
 						// http://stackoverflow.com/a/6464500
-						'~{@(echoj?l?|if|else|for|while|each|set|call|global|php|return|inc|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
+						'~{@(echoj?l?|print|if|else|for|while|each|set|call|global|php|return|inc|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
 						function($matches)use(&$replacement){
 							return "\r\n" . self::$var_name . ";\r\n"
 								. $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null)
