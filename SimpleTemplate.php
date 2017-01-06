@@ -13,13 +13,7 @@
 		
 		private $data = array();
 		
-		// http://stackoverflow.com/a/1320156
-		private $php = '$array_flat = function(array $array) {
-	$return = array();
-	array_walk_recursive($array, function($a)use(&$return){$return[]=$a;});
-	return $return;
-};
-';
+		private $php = '';
 		
 		private static function render_var($name = null, $safe = true){
 			$var = '$' . self::$var_name . ($name ? '[\'' . join('\'][\'', explode('.', $name)) . '\']' : '');
@@ -94,6 +88,33 @@
 				self::$var_name = 'DATA' . mt_rand() . time();
 			}
 			
+			// http://stackoverflow.com/a/1320156
+			$this->php = <<<'PHP'
+$FN = array(
+	'array_flat' => function(array $array) {
+		$r = array();
+		array_walk_recursive($array, function($a)use(&$r){$r[]=$a;});
+		return $r;
+	},
+	'inc' => function(&$_, $by = 1){
+		switch(gettype($_))
+		{
+			case 'integer':
+			case 'double':
+				$_ += $by;
+				break;
+			case 'string':
+				for($i = 0; $i < $by; $i++)
+				{
+					++$_;
+				}
+				break;
+		}
+	}
+);
+
+PHP;
+			
 			$brackets = 0;
 			
 			$replacement = array(
@@ -117,7 +138,7 @@
 					
 					$separator = $bits['separator'] ? self::parse_value($bits['separator']): '\'\'';
 					
-					return 'echo implode(' . $separator . ', $array_flat((array)' . implode(')), implode(' . $separator . ', $array_flat((array)', self::parse_values($bits['data'])) . '));';
+					return 'echo implode(' . $separator . ', $FN[\'array_flat\']((array)' . implode(')), implode(' . $separator . ', $FN[\'array_flat\']((array)', self::parse_values($bits['data'])) . '));';
 				},
 				'echol' => function($data)use(&$replacement){
 					return $replacement['echo']($data) . 'echo PHP_EOL;';
@@ -208,7 +229,7 @@
 					return ($data['into'] ? self::render_var($data['into'], false) . ' = ' : '') . $data['fn'] . '(' . implode(',', self::parse_values($data['args'])) . ');';
 				},
 				'php' => function($data){
-					return '?><?php ' . $data;
+					return '?><?php ' . $data . ';';
 				},
 				'return' => function($data){
 					return 'return ' . ($data ? self::parse_value($data): '').';';
@@ -217,22 +238,7 @@
 					preg_match('@^(?:\s*by\s*(?<by>' . self::$regex['var_value'] . ')\s*)?(?<values>.*?)$@', $data, $bits);
 					$values = self::parse_values($bits['values'], '\s*,\s*', false);
 					$inc = isset($bits['by']) && $bits['by'] !== '' ? self::parse_value($bits['by']): '1';
-					$return = 'call_user_func_array(function()use(&$' . self::$var_name . '){
-$fn=function(&$_){
-	switch(gettype($_))
-	{
-		case \'integer\':
-		case \'double\':
-			$_ += ' . $inc . ';
-			break;
-		case \'string\':
-			for($i = 0; $i < ' . $inc . '; $i++)
-			{
-				++$_;
-			}
-			break;
-	}
-};';
+					$return = '';
 					
 					foreach($values as $value)
 					{
@@ -241,10 +247,23 @@ $fn=function(&$_){
 							continue;
 						}
 						
-						$return .= 'if(gettype(' . $value . ')===\'array\'){array_walk_recursive(' . $value . ', $fn);}else{$fn(' . $value . ');}';
+						$return .= <<<PHP
+if(gettype({$value})==='array')
+{
+	array_walk_recursive({$value}, function(&\$_)use(&\$FN){
+		return \$FN['inc'](\$_, {$inc});
+	});
+}
+else
+{
+	\$FN['inc']({$value}, {$inc});
+}
+
+PHP;
 					}
 					
-					return $return . '}, array());';
+					return $return;
+					
 				}
 			);
 			
