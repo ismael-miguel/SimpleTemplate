@@ -31,6 +31,8 @@ If you are curious about the generated PHP:
 
 I recommend you to do not look at it. In there lies madness and **bad** code. Stay away from it! BEWARE!!! **BEWARE!!!1**
 
+I've put some effort into making the generated some readable (or, at least, followable), but there's still madness there!
+
 ##How it works
 
 I've tried to keep the syntax as easy as possible, but still allow some flexibility. Since this is a simple engine, it isn't that powerfull.
@@ -170,9 +172,24 @@ The variable `argv` will contain the arguments passed while `argc` will have the
      Simply runs the `<snippet>` directly.
      
      You can use the variable `$DATA` to access everything you need.
-    
+     
+     Some functions are available inside `$FN`. They don't do anything too great, but they are **VERY** important and shouldn't be changed.
 
-More changes may come in the future.
+ - `fn`
+ 
+    Structure: `fn <var>`
+    
+    Creates a function with the name `<var>`. Using `{@/}` to limit the scope is **VERY HIGLY** recommended.
+    
+    All the passed arguments are available inside `argv`.
+    
+    For example: `{@fn show}{@echo argv}{@/}{@call show 1, 2, 4, 8}`
+    
+    You can create functions inside array elements too like: `{@fn test.0}[...]{@/}`!  
+    If the function `test.0` doesn't exist, the system will try `text_0`.  
+    This allows you to write `{@call var.dump}` and it will run `var_dump()`.
+
+More changes may come in the future, like expression (like `a + b / c % d . e`) parsing.
 
 <hr>
 
