@@ -312,8 +312,8 @@ PHP;
 							return "\r\n" . self::$var_name . ";\r\n"
 								. (
 									$brackets > 1
-										? "// {$matches[0]}\r\n$tabs" . preg_replace('@\r?\n(?!\t|\r?\n) *@', '$1' . $tabs, $php)
-										: "// {$matches[0]}\r\n$php"
+										? "{$tabs}// {$matches[0]}\r\n{$tabs}" . preg_replace('@\r?\n(?!\t|\r?\n) *@', '$1' . $tabs, $php)
+										: "// {$matches[0]}\r\n{$php}"
 								)
 								. "\r\n\r\necho <<<'" . self::$var_name . "'\r\n";
 						},
