@@ -230,14 +230,12 @@ PHP;
 				'call' => function($data){
 					preg_match('@^\s*(?<fn>' . self::$regex['var'] . ')\s*(?:into\s*(?<into>' . self::$regex['var'] . ')\s*)?(?<args>.*?)$@', $data, $bits);
 					
-					//return ($data['into'] ? self::render_var($bits['into'], false) . ' = ' : '') . $bits['fn'] . '(' . implode(',', self::parse_values($bits['args'])) . ');';
-					
 					$var = self::render_var($bits['fn'], false);
 					
 					return ($bits['into'] ? self::render_var($bits['into'], false) . ' = ' : '')
 						. 'call_user_func_array('
 							. 'isset(' . $var . ') && gettype(' . $var . ') === \'object\' && ' . $var . ' instanceof \Closure'
-								. '? ' . $var . ' : "' . addslashes($bits['fn']) . '", '
+								. '? ' . $var . ' : "' . str_replace('.', '_', $bits['fn']) . '", '
 							. 'array(' . implode(',', self::parse_values($bits['args'])) . '));';
 				},
 				'php' => function($data){
