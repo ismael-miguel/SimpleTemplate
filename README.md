@@ -206,3 +206,43 @@ Which can be written as:
     {@incby3 argv}{@echoj" " argv}
 
 Some whitespace are optional, as long as it isn't ambiguous.
+
+<hr>
+
+You can implement something really close to classes. It isn't pretty, but works.
+
+Here's an example:
+
+	{@fn Cookie}
+		{@set chocolate argv.0}
+		
+		{@fn this.set_chocolate}
+			{@// PARENT refers to the variables defined}
+			{@// 	on the scope above}
+			
+			{@set PARENT.chocolate argv.0}
+		{@/}
+		
+		{@fn this.get_chocolate}
+			{@return PARENT.chocolate}
+		{@/}
+		
+		{@return this}
+	{@/}
+
+	{@call Cookie into x}
+
+	{@call x.set_chocolate "milk"}
+	{@call x.get_chocolate into y}
+
+	{@echo y}
+
+This creates a function `Cookies`, which returns an array with 2 `Closure`s (`set_chocolate` and `get_chocolate`).
+
+Locally, it has defined a variable called `chocolate`, which receives the value of the first parameter of `Cookies`.
+
+Later on, we call `x.set_chocolate` and tell is it `"milk"`.
+
+We then call `x.get_chocolate` and store the value on `y`, showing later the contents.
+
+This should display `"milk"`.
