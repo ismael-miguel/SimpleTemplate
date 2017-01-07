@@ -282,7 +282,7 @@ PHP;
 				    $var_name = self::$var_name;
 					
 					return self::render_var($data, false) . <<<PHP
- = function(){
+ = function()use(&\$FN){
 	\$DATA = array(
 		'argv' => func_get_args(),
 		'argc' => func_num_args(),
@@ -373,7 +373,7 @@ PHP;
 		}
 		
 		function render(){
-			$fn = eval('return function(){' . call_user_func_array(array($this, 'getPHP'), func_get_args()) . '};');
+			$fn = eval('return function(){' . call_user_func_array(array($this, 'getPHP'), func_get_args()) . PHP_EOL . '};');
 			return $fn();
 		}
 		
