@@ -90,6 +90,8 @@
 			
 			// http://stackoverflow.com/a/1320156
 			$this->php = <<<'PHP'
+
+// - FUNCTION BOILERPLATE
 $FN = array(
 	'array_flat' => function(array $array) {
 		$r = array();
@@ -112,7 +114,9 @@ $FN = array(
 		}
 	}
 );
+// - END FUNCTION BOILERPLATE -
 
+// - CODE
 PHP;
 			
 			$brackets = 0;
@@ -123,11 +127,11 @@ PHP;
 					{
 						--$brackets;
 						
-						return '}';
+						return '};';
 					}
 					else
 					{
-						return '';
+						return ';';
 					}
 				},
 				'//' => function(){
@@ -160,7 +164,7 @@ PHP;
 					
 					return 'if(' . self::parse_boolean($data) . '){';
 				},
-				'else' => function($data)use(&$brackets, &$replacement){
+				'else' => function($data)use(&$brackets){
 					$data = explode(' ', $data, 2);
 					
 					if($data[0] === 'if')
@@ -224,9 +228,17 @@ PHP;
 					return self::render_var(array_shift($data)) . ' = $GLOBALS[\'' . join('\'][\'', $data) . '\'];';
 				},
 				'call' => function($data){
-					preg_match('@^\s*(?<fn>\w+)\s*(?:into\s*(?<into>' . self::$regex['var'] . ')\s*)?(?<args>.*?)$@', $data, $data);
+					preg_match('@^\s*(?<fn>' . self::$regex['var'] . ')\s*(?:into\s*(?<into>' . self::$regex['var'] . ')\s*)?(?<args>.*?)$@', $data, $bits);
 					
-					return ($data['into'] ? self::render_var($data['into'], false) . ' = ' : '') . $data['fn'] . '(' . implode(',', self::parse_values($data['args'])) . ');';
+					//return ($data['into'] ? self::render_var($bits['into'], false) . ' = ' : '') . $bits['fn'] . '(' . implode(',', self::parse_values($bits['args'])) . ');';
+					
+					$var = self::render_var($bits['fn'], false);
+					
+					return ($bits['into'] ? self::render_var($bits['into'], false) . ' = ' : '')
+						. 'call_user_func_array('
+							. 'isset(' . $var . ') && gettype(' . $var . ') === \'object\' && ' . $var . ' instanceof \Closure'
+								. '? ' . $var . ' : "' . addslashes($bits['fn']) . '", '
+							. 'array(' . implode(',', self::parse_values($bits['args'])) . '));';
 				},
 				'php' => function($data){
 					return '?><?php ' . $data . ';';
@@ -264,6 +276,24 @@ PHP;
 					
 					return $return;
 					
+				},
+				'fn' => function($data)use(&$brackets){
+					++$brackets;
+					
+				    $version = self::$version;
+				    $var_name = self::$var_name;
+					
+					return self::render_var($data, false) . <<<PHP
+ = function(){
+	\$DATA = array(
+		'argv' => func_get_args(),
+		'argc' => func_num_args(),
+		'VERSION' => '{$version}',
+		'EOL' => PHP_EOL
+	);
+	\${$var_name} = &\$DATA;
+
+PHP;
 				}
 			);
 			
@@ -273,19 +303,34 @@ PHP;
 					"\r\n" . self::$var_name . ";\r\necho <<<'" . self::$var_name . "'"
 				),
 				array('', ''),
-				"echo <<<'" . self::$var_name . "'\r\n"
+				"\r\necho <<<'" . self::$var_name . "'\r\n"
 					. preg_replace_callback(
 						// http://stackoverflow.com/a/6464500
-						'~{@(echoj?l?|print|if|else|for|while|each|set|call|global|php|return|inc|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
-						function($matches)use(&$replacement){
+						'~{@(echoj?l?|print|if|else|for|while|each|set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
+						function($matches)use(&$replacement, &$brackets){
+							$php = $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null);
+							$tabs = $brackets > ($matches[1] == 'fn')
+								? str_repeat("\t", $brackets)
+								: '';
+							
 							return "\r\n" . self::$var_name . ";\r\n"
-								. $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null)
-								. "echo <<<'" . self::$var_name . "'\r\n";
+								. "// {$matches[0]}\r\n"
+								. (
+									$brackets > 1
+										? $tabs . preg_replace('@\r?\n(?!\t|\r?\n) *@', '$1' . $tabs, $php)
+										: $php
+								)
+								. "\r\n\r\necho <<<'" . self::$var_name . "'\r\n";
 						},
 						$str . ''
 					)
-				. "\r\n" . self::$var_name . ";\r\n"
-				) . str_repeat('}', $brackets);
+					. "\r\n" . self::$var_name . ";\r\n"
+				)
+				. ($brackets
+					? "\r\n// AUTO-CLOSE\r\n" . str_repeat('};', $brackets)
+					: ''
+				)
+				. "// - END CODE -";
 		}
 		
 		function setData($key, $value){
@@ -318,7 +363,15 @@ PHP;
 			$this->data['VERSION'] = self::$version;
 			$this->data['EOL'] = PHP_EOL;
 			
-			return '$DATA = ' . var_export($this->data, true) . ';$' . self::$var_name . ' = &$DATA;' . $this->php;
+			return '// - DATA BOILERPLATE'
+				. PHP_EOL
+				. '$DATA = ' . var_export($this->data, true) . ';'
+				. PHP_EOL
+				. '$' . self::$var_name . ' = &$DATA;'
+				. PHP_EOL
+				. '// - END DATA BOILERPLATE -'
+				. PHP_EOL
+				. $this->php;
 		}
 		
 		function render(){
