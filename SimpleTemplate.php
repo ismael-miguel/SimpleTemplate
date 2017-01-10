@@ -205,7 +205,7 @@ PHP;
 					);
 				},
 				'set' => function($data){
-					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?<values>.*?)$@', $data, $bits);
+					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?<values>.*)?$@', $data, $bits);
 					
 					$values = self::parse_values($bits['values']);
 					
@@ -215,7 +215,7 @@ PHP;
 					}
 					else
 					{
-						return self::render_var($bits['var'], false) . ' = ' . self::parse_value($bits['values']) . ';';
+						return self::render_var($bits['var'], false) . ' = ' . (self::parse_value($bits['values']) ?: 'null') . ';';
 					}
 				},
 				'global' => function($data){
@@ -245,6 +245,7 @@ PHP;
 					$values = self::parse_values($bits['values'], '\s*,\s*', false);
 					$inc = isset($bits['by']) && $bits['by'] !== '' ? self::parse_value($bits['by']): '1';
 					$return = '';
+					$var_name = self::$var_name;
 					
 					foreach($values as $value)
 					{
@@ -256,7 +257,7 @@ PHP;
 						$return .= <<<PHP
 if(gettype({$value})==='array')
 {
-	array_walk_recursive({$value}, function(&\$_)use(&\$FN){
+	array_walk_recursive({$value}, function(&\$_)use(&\$FN, &\${$var_name}){
 		return \$FN['inc'](\$_, {$inc});
 	});
 }
@@ -279,14 +280,14 @@ PHP;
 					
 					return self::render_var($data, false) . <<<PHP
  = function()use(&\$FN, &\$_){
-	\$DATA = array(
+	\${$var_name} = array(
 		'argv' => func_get_args(),
 		'argc' => func_num_args(),
 		'VERSION' => '{$version}',
 		'EOL' => PHP_EOL,
 		'PARENT' => &\$_
 	);
-   \$_ = &\$DATA;
+	\$_ = &\${$var_name};
 
 PHP;
 				}
