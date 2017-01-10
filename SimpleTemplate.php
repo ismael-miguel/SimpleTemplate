@@ -29,11 +29,21 @@ $FN = array(
 	'inc' => function(&$_, $by = 1){
 		switch(gettype($_))
 		{
+			case 'NULL':
+			case 'null':
+				$_ = $by;
+				break;
 			case 'integer':
 			case 'double':
+			case 'float':
 				$_ += $by;
 				break;
 			case 'string':
+				if($_ === '')
+				{
+					break;
+				}
+				
 				for($i = 0; $i < $by; $i++)
 				{
 					++$_;
@@ -205,17 +215,18 @@ PHP;
 					);
 				},
 				'set' => function($data){
-					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?<values>.*)?$@', $data, $bits);
+					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?<values>.*)$@', $data, $bits);
 					
 					$values = self::parse_values($bits['values']);
+					$count = count($values);
 					
-					if(count($values) > 1)
+					if($count > 1)
 					{
 						return self::render_var($bits['var'], false) . ' = array(' . implode(',', $values) . ');';
 					}
 					else
 					{
-						return self::render_var($bits['var'], false) . ' = ' . (self::parse_value($bits['values']) ?: 'null') . ';';
+						return self::render_var($bits['var'], false) . ' = ' . ($count && strlen($values[0]) ? $values[0] : 'null') . ';';
 					}
 				},
 				'global' => function($data){
@@ -257,8 +268,8 @@ PHP;
 						$return .= <<<PHP
 if(gettype({$value})==='array')
 {
-	array_walk_recursive({$value}, function(&\$_)use(&\$FN, &\${$var_name}){
-		return \$FN['inc'](\$_, {$inc});
+	array_walk_recursive({$value}, function(&\$value)use(&\$FN, &\${$var_name}){
+		\$FN['inc'](\$value, {$inc});
 	});
 }
 else
