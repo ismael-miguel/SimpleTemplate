@@ -49,7 +49,8 @@ Anything outside those is considered output.
 
 ####Values and variables:
 
-A variable is any alphanumeric string that doesn't have a special meaning. Arrays' items can be accessed by writting the key after a period `like.this.example.here`.
+A variable is any alphanumeric string that doesn't have a special meaning. Arrays' items can be accessed by writting the key after a period `like.this.example.here`.  
+Adding `U <name>` or `unsafe <name>` allows the use of variables without protection against undefined indexes.
 
 A value is everything else, like numbers, `"strings"`, `true` and `false`. Strings **must** be with double-quotes.
 
