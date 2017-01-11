@@ -201,7 +201,7 @@ Here's an example, that increments all the values in `argv` by 3, and outputs th
 
 Which can be written as:
 
-    {@incby3 argv}{@echoj" " argv}
+    {@incby3argv}{@echoj" " argv}
 
 Some whitespace are optional, as long as it isn't ambiguous.
 
