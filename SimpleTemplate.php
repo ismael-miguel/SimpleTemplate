@@ -7,9 +7,9 @@
 		private static $var_name = 'DATA';
 		
 		private static $regex = array(
-			'var' => '(?:[_a-zA-Z]\w*(?:\.\w*)?)',
+			'var' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?)',
 			'value' => '(?:(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)',
-			'var_value' => '(?:[_a-zA-Z]\w*(?:\.\w*)?|(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)'
+			'var_value' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?|(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)'
 		);
 		
 		private $data = array();
@@ -58,9 +58,11 @@ $FN = array(
 PHP;
 
 		private static function render_var($name = null, $safe = true){
-			$var = '$' . self::$var_name . ($name ? '[\'' . join('\'][\'', explode('.', $name)) . '\']' : '');
+			preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name, $bits);
+			var_dump($bits);
+			$var = '$' . self::$var_name . ($bits['var'] ? '[\'' . join('\'][\'', explode('.', $bits['var'])) . '\']' : '');
 			
-			return $safe ? '(isset(' . $var . ')?' . $var . ':null)' : $var;
+			return $safe && !$bits['unsafe'] ? '(isset(' . $var . ')?' . $var . ':null)' : $var;
 		}
 		
 		private static function split_values($values, $delimiter = '\s*,\s*'){
