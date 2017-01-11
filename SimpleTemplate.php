@@ -7,9 +7,9 @@
 		private static $var_name = 'DATA';
 		
 		private static $regex = array(
-			'var' => '(?:\w*(?:\.\w*)?)',
+			'var' => '(?:[_a-zA-Z]\w*(?:\.\w*)?)',
 			'value' => '(?:(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)',
-			'var_value' => '(?:\w*(?:\.\w*)?|(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)'
+			'var_value' => '(?:[_a-zA-Z]\w*(?:\.\w*)?|(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)'
 		);
 		
 		private $data = array();
