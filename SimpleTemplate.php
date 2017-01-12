@@ -14,6 +14,7 @@
 		
 		private $data = array();
 		
+		private $optimize = true;
 		
 		// array_flat -> http://stackoverflow.com/a/1320156
 		private $php = <<<'PHP'
@@ -59,7 +60,7 @@ PHP;
 
 		private static function render_var($name = null, $safe = true){
 			preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name, $bits);
-			var_dump($bits);
+			
 			$var = '$' . self::$var_name . ($bits['var'] ? '[\'' . join('\'][\'', explode('.', $bits['var'])) . '\']' : '');
 			
 			return $safe && !$bits['unsafe'] ? '(isset(' . $var . ')?' . $var . ':null)' : $var;
@@ -83,7 +84,7 @@ PHP;
 		private static function parse_boolean($data){
 			if(
 				!preg_match(
-					'@(' . self::$regex['var_value'] . ')\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?))?|has(?:\s*not)?)\s*(' . self::$regex['var_value'] . '))?@',
+					'@(' . self::$regex['var_value'] . ')\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)))?|has(?:\s*not)?)\s*(' . self::$regex['var_value'] . '))?@',
 					$data, $bits
 				)
 			)
@@ -94,15 +95,19 @@ PHP;
 			$fn = array(
 				'is' => function($data, $var1, $var2){
 					$symbols = array(
-						'' => '===',
-						'equal' => '==',
-						'lower' => '<',
-						'greater' => '>'
+						'' => '%s === %s',
+						'a' => 'gettype(%s) === %s',
+						'instance' => 'is_a(%s, %s)',
+						'equal' => '%s == %s',
+						'lower' => '%s < %s',
+						'greater' => '%s > %s',
+						'multiple' => '!(%s %% %s)',
+						'mod' => '%s %% %s'
 					);
 					
-					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater)?\s*(?:to|than)?@', $data, $bits);
+					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater|a|instance|multiple|mod)?\s*(?:of|to|than)?@', $data, $bits);
 					
-					return (isset($bits['not']) && $bits['not'] !== '' ? '!': '') . '(' . $var1 . ' ' . $symbols[isset($bits['operation']) ? $bits['operation']: ''] . ' ' . $var2 . ')';
+					return (isset($bits['not']) && $bits['not'] !== '' ? '!': '') . '(' . sprintf($symbols[isset($bits['operation']) ? $bits['operation']: ''], $var1, $var2) . ')';
 				},
 				'has' => function($data, $var1, $var2){
 					return ($data === 'not' ? '!': '') . 'array_key_exists((array)' . $var1 . ', ' . $var2 . ')';
@@ -125,13 +130,17 @@ PHP;
 			return preg_match('@^' . self::$regex['value'] . '$@', $value) ? $value : self::render_var($value, $safe);
 		}
 		
+		private static function is_value($value){
+			return strlen($value) && $value[0] !== '$' && $value[0] !== '(';
+		}
+		
 		function __construct($str){
 			
 			$brackets = 0;
 			$tabs = '';
 			
 			$replacement = array(
-				'/' => function($tabs)use(&$brackets){
+				'/' => function($data)use(&$replacement, &$brackets, &$tabs){
 					if($brackets > 0)
 					{
 						--$brackets;
@@ -146,34 +155,34 @@ PHP;
 				'//' => function(){
 					return '';
 				},
-				'echo' => function($tabs, $data)use(&$brackets){
+				'echo' => function($data)use(&$replacement, &$brackets, &$tabs){
 					preg_match('@^(?:separator\s+(?<separator>' . self::$regex['var_value'] . ')\s+)?(?<data>.*)$@', $data, $bits);
 					
 					$separator = $bits['separator'] ? self::parse_value($bits['separator']): '\'\'';
 					
-					return $tabs . 'echo implode(' . $separator . ', $FN[\'array_flat\']((array)' . implode(')), implode(' . $separator . ', $FN[\'array_flat\']((array)', self::parse_values($bits['data'])) . '));';
+					return $tabs . 'echo implode(' . $separator . ', $FN[\'array_flat\']((array)' . implode(',(array)', self::parse_values($bits['data'])) . '));';
 				},
-				'echol' => function($tabs, $data)use(&$replacement){
-					return $replacement['echo']($tabs, $data) . 'echo PHP_EOL;';
+				'echol' => function($data)use(&$replacement, &$brackets, &$tabs){
+					return $replacement['echo']($data) . 'echo PHP_EOL;';
 				},
-				'echoj' => function($tabs, $data)use(&$replacement){
-					return $replacement['echo']($tabs, 'separator ' . $data);
+				'echoj' => function($data)use(&$replacement, &$brackets, &$tabs){
+					return $replacement['echo']('separator ' . $data);
 				},
-				'echojl' => function($tabs, $data)use(&$replacement){
-					return $replacement['echol']($tabs, 'separator ' . $data);
+				'echojl' => function($data)use(&$replacement, &$brackets, &$tabs){
+					return $replacement['echol']('separator ' . $data);
 				},
-				'echof' => function($tabs, $data)use(&$replacement){
-					return $replacement['echol']($tabs, 'separator ' . $data);
+				'echof' => function($data)use(&$replacement, &$brackets, &$tabs){
+					return $replacement['echol']('separator ' . $data);
 				},
-				'print' => function($tabs, $data)use(&$replacement){
-					return $replacement['call']($tabs, (strpos('into', $data)===0? 's' : '') . 'printf ' . $data);
+				'print' => function($data)use(&$replacement, &$brackets, &$tabs){
+					return $replacement['call']((strpos('into', $data)===0? 's' : '') . 'printf ' . $data);
 				},
-				'if' => function($tabs, $data)use(&$brackets){
+				'if' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
 					return $tabs . 'if(' . self::parse_boolean($data) . '){';
 				},
-				'else' => function($tabs, $data)use(&$brackets){
+				'else' => function($data)use(&$replacement, &$brackets, &$tabs){
 					$data = explode(' ', $data, 2);
 					
 					if($data[0] === 'if')
@@ -187,24 +196,24 @@ PHP;
 						return $tabs . '}else{';
 					}
 				},
-				'each' => function($tabs, $data)use(&$brackets){
+				'each' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
 					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*as\s*(?<as>' . self::$regex['var'] . ')(?:\s*key\s*(?<key>' . self::$regex['var'] . ')\s*)?$@', $data, $bits);
 					
 					return $tabs . 'foreach((array)' . self::render_var($bits['var']) . ' as ' . (isset($bits['key']) ? self::render_var($bits['key'], false) . ' => ': '') . self::render_var($bits['as'], false) . '){';
 				},
-				'while' => function($tabs, $data)use(&$brackets){
+				'while' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
 					return $tabs . 'while(' . self::parse_boolean($data) . '){';
 				},
-				'for' => function($tabs, $data)use(&$brackets){
+				'for' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
 					return preg_replace_callback(
 						'@(?<var>' . self::$regex['var'] . ')(?:\s*from\s*(?<start>' . self::$regex['var_value'] . '))?(?:\s*to\s*(?<end>' . self::$regex['var_value'] . '))(?:\s*step\s*(?<step>' . self::$regex['var_value'] . '))?@',
-						function($matches){
+						function($matches)use(&$replacement, &$brackets, &$tabs){
 						
 							$values = array(
 								'start' => isset($matches['start']) && $matches['start'] !== '' ? self::parse_value($matches['start']) : '0',
@@ -212,12 +221,30 @@ PHP;
 								'step' => isset($matches['step']) ? self::parse_value($matches['step']) : '1'
 							);
 							
-							return $tabs . 'foreach(range(' . $values['start'] . ', ' . $values['end'] . ', abs(' . $values['step'] . ')) as ' . self::render_var($matches['var'], false) . '){';
+							$return = $tabs . 'foreach(';
+							
+							if($this->optimize && self::is_value($values['start']) && self::is_value($values['end']) && self::is_value($values['step']))
+							{
+								$return = "{$tabs}// ~ optimization enabled ~ inlining the results\r\n{$return}" . var_export(
+									range(
+										preg_replace('@^"|"$@', '', $values['start']),
+										preg_replace('@^"|"$@', '', $values['end']),
+										abs($values['step'])
+									),
+									true
+								);
+							}
+							else
+							{
+								$return .= 'range(' . $values['start'] . ', ' . $values['end'] . ', abs(' . $values['step'] . '))';
+							}
+							
+							return $return . ') as ' . self::render_var($matches['var'], false) . '){';
 						},
 						$data
 					);
 				},
-				'set' => function($tabs, $data){
+				'set' => function($data)use(&$replacement, &$brackets, &$tabs){
 					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?<values>.*)$@', $data, $bits);
 					
 					$values = self::parse_values($bits['values']);
@@ -232,33 +259,40 @@ PHP;
 						return $tabs . self::render_var($bits['var'], false) . ' = ' . ($count && strlen($values[0]) ? $values[0] : 'null') . ';';
 					}
 				},
-				'global' => function($tabs, $data){
+				'global' => function($data)use(&$replacement, &$brackets, &$tabs){
 					$data = self::split_values($data, ' ');
 					
 					return $tabs . self::render_var(array_shift($data)) . ' = $GLOBALS[\'' . join('\'][\'', $data) . '\'];';
 				},
-				'call' => function($tabs, $data){
+				'call' => function($data)use(&$replacement, &$brackets, &$tabs){
 					preg_match('@^\s*(?<fn>' . self::$regex['var'] . ')\s*(?:into\s*(?<into>' . self::$regex['var'] . ')\s*)?(?<args>.*?)$@', $data, $bits);
 					
 					$var = self::render_var($bits['fn'], false);
 					
 					return $tabs . ($bits['into'] ? self::render_var($bits['into'], false) . ' = ' : '')
 						. 'call_user_func_array('
-							. 'isset(' . $var . ') && gettype(' . $var . ') === \'object\' && ' . $var . ' instanceof \Closure'
+							. 'isset(' . $var . ') && is_callable(' . $var . ')'
 								. '? ' . $var . ' : "' . str_replace('.', '_', $bits['fn']) . '", '
 							. 'array(' . implode(',', self::parse_values($bits['args'])) . '));';
 				},
-				'php' => function($tabs, $data){
+				'php' => function($data)use(&$replacement, &$brackets, &$tabs){
 					return $tabs . $data . ';';
 				},
-				'return' => function($tabs, $data){
+				'return' => function($data)use(&$replacement, &$brackets, &$tabs){
 					return $tabs . 'return ' . ($data ? self::parse_value($data): '').';';
 				},
-				'inc' => function($tabs, $data){
+				'inc' => function($data)use(&$replacement, &$brackets, &$tabs){
 					preg_match('@^(?:\s*by\s*(?<by>' . self::$regex['var_value'] . ')\s*)?(?<values>.*?)$@', $data, $bits);
 					$values = self::parse_values($bits['values'], '\s*,\s*', false);
 					$inc = isset($bits['by']) && $bits['by'] !== '' ? self::parse_value($bits['by']): '1';
+					
 					$return = '';
+					
+					if($this->optimize && (!$inc || $inc === '"0"' || $inc === 'null' || $inc === 'false'))
+					{
+						return "{$tabs}// ~ optimization enabled ~ increment by {$inc} removed";
+					}
+					
 					$var_name = self::$var_name;
 					
 					foreach($values as $value)
@@ -286,7 +320,7 @@ PHP;
 					return $return;
 					
 				},
-				'fn' => function($tabs, $data)use(&$brackets){
+				'fn' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
 				    $version = self::$version;
@@ -311,7 +345,7 @@ PHP;
 				. preg_replace_callback(
 					// http://stackoverflow.com/a/6464500
 					'~{@(echoj?l?|print|if|else|for|while|each|set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
-					function($matches)use(&$replacement, &$brackets){
+					function($matches)use(&$replacement, &$brackets, &$tabs){
 						
 						$tabs = $brackets
 							? str_repeat("\t", $brackets - ($matches[1] === '/'))
@@ -319,7 +353,7 @@ PHP;
 						
 						$var_name = self::$var_name;
 						
-						$php = $replacement[$matches[1]]($tabs, isset($matches[2]) ? $matches[2] : null);
+						$php = $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null);
 						
 						
 						return "\r\n{$var_name}\r\n);\r\n{$tabs}// {$matches[0]}\r\n{$php}\r\n\r\n{$tabs}echo trim(<<<'{$var_name}'\r\n";
@@ -344,7 +378,7 @@ PHP;
 				$this->php .=  "\r\n// AUTO-CLOSE\r\n" . str_repeat('};', $brackets);
 			}
 			
-			$this->php .= '// - END CODE -';
+			$this->php .= PHP_EOL . '// - END CODE -';
 		}
 		
 		function setData($key, $value){
