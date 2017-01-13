@@ -140,10 +140,12 @@ PHP;
 			return strlen($value) && $value[0] !== '$' && $value[0] !== '(';
 		}
 		
-		function __construct($str){
+		function __construct($str, $optimize = true){
 			
 			$brackets = 0;
 			$tabs = '';
+			
+			$this->optimize = !!$optimize;
 			
 			$replacement = array(
 				'/' => function($data)use(&$replacement, &$brackets, &$tabs){
@@ -244,7 +246,7 @@ PHP;
 								}
 								else
 								{
-									$return = "{$tabs}// ~ optimization DISABLE ~ results could be inlined\r\n{$return}"
+								$return = "{$tabs}// ~ optimization DISABLE ~ results could be inlined\r\n{$return}range({$values['start']}, {$values['end']}, abs({$values['step']}))";
 								}
 							}
 							else
@@ -252,7 +254,7 @@ PHP;
 								$return .= 'range(' . $values['start'] . ', ' . $values['end'] . ', abs(' . $values['step'] . '))';
 							}
 							
-							return $return . ') as ' . self::render_var($matches['var'], false) . '){';
+							return $return . ' as ' . self::render_var($matches['var'], false) . '){';
 						},
 						$data
 					);
@@ -309,7 +311,7 @@ PHP;
 						}
 						else
 						{
-							$return .= "{$tabs}// ~ optimization DISABLED ~ increment by {$inc} could be removed";
+							$return .= "{$tabs}// ~ optimization DISABLED ~ increment by {$inc} could be removed\r\n";
 						}
 					}
 					
@@ -439,11 +441,6 @@ PHP;
 				. PHP_EOL
 				. PHP_EOL
 				. $this->php;
-		}
-		
-		function render(){
-			$fn = eval('return function(){' . call_user_func_array(array($this, 'getPHP'), func_get_args()) . PHP_EOL . '};');
-			return $fn();
 		}
 		
 		function render(){
