@@ -11,7 +11,7 @@ The performance of it isn't great, but works fine **as far as I know**.
 
 1- You need to load a template code:
 
-	$template = new SimpleTemplate('{@if argv.0}Hello world!{@else}Boo!!!');
+	$template = new SimpleTemplate('{@if argv.0}Hello world!{@else}Boo!!!', $optimization);
 	
 	//or
 	$template = new SimpleTemplate::fromFile($path);
@@ -29,9 +29,10 @@ If you are curious about the generated PHP:
 
 	echo $template->getPHP($arguments);
 
-I recommend you to do not look at it. In there lies madness and **bad** code. Stay away from it! BEWARE!!! **BEWARE!!!1**
+You definetivelly (now) should look at the generated code.
+You will find some notes about optimization and what-not.
 
-I've put some effort into making the generated some readable (or, at least, followable), but there's still madness there!
+Please, BEWARE of bad code!!!
 
 ##How it works
 
