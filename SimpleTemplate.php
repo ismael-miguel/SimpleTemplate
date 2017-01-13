@@ -28,6 +28,11 @@ $FN = array(
 		return $return;
 	},
 	'inc' => function(&$_, $by = 1){
+		if(!$by)
+		{
+			return $_;
+		}
+		
 		switch(gettype($_))
 		{
 			case 'NULL':
@@ -84,7 +89,7 @@ PHP;
 		private static function parse_boolean($data){
 			if(
 				!preg_match(
-					'@(' . self::$regex['var_value'] . ')\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)))?|has(?:\s*not)?)\s*(' . self::$regex['var_value'] . '))?@',
+					'@(' . self::$regex['var_value'] . ')\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)|matches))?|has(?:\s*not)?)\s*(' . self::$regex['var_value'] . '))?@',
 					$data, $bits
 				)
 			)
@@ -102,10 +107,11 @@ PHP;
 						'lower' => '%s < %s',
 						'greater' => '%s > %s',
 						'multiple' => '!(%s %% %s)',
-						'mod' => '%s %% %s'
+						'mod' => '%s %% %s',
+						'matches' => 'preg_match(%s, %s)'
 					);
 					
-					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater|a|instance|multiple|mod)?\s*(?:of|to|than)?@', $data, $bits);
+					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater|a|instance|multiple|mod|matches)?\s*(?:of|to|than)?@', $data, $bits);
 					
 					return (isset($bits['not']) && $bits['not'] !== '' ? '!': '') . '(' . sprintf($symbols[isset($bits['operation']) ? $bits['operation']: ''], $var1, $var2) . ')';
 				},
@@ -223,16 +229,23 @@ PHP;
 							
 							$return = $tabs . 'foreach(';
 							
-							if($this->optimize && self::is_value($values['start']) && self::is_value($values['end']) && self::is_value($values['step']))
+							if(self::is_value($values['start']) && self::is_value($values['end']) && self::is_value($values['step']))
 							{
-								$return = "{$tabs}// ~ optimization enabled ~ inlining the results\r\n{$return}" . var_export(
-									range(
-										preg_replace('@^"|"$@', '', $values['start']),
-										preg_replace('@^"|"$@', '', $values['end']),
-										abs($values['step'])
-									),
-									true
-								);
+								if($this->optimize)
+								{
+									$return = "{$tabs}// ~ optimization enabled ~ inlining the results\r\n{$return}" . var_export(
+										range(
+											preg_replace('@^"|"$@', '', $values['start']),
+											preg_replace('@^"|"$@', '', $values['end']),
+											abs($values['step'])
+										),
+										true
+									);
+								}
+								else
+								{
+									$return = "{$tabs}// ~ optimization DISABLE ~ results could be inlined\r\n{$return}"
+								}
 							}
 							else
 							{
@@ -288,9 +301,16 @@ PHP;
 					
 					$return = '';
 					
-					if($this->optimize && (!$inc || $inc === '"0"' || $inc === 'null' || $inc === 'false'))
+					if(!$inc || $inc === '"0"' || $inc === 'null' || $inc === 'false')
 					{
-						return "{$tabs}// ~ optimization enabled ~ increment by {$inc} removed";
+						if($this->optimize)
+						{
+							return "{$tabs}// ~ optimization enabled ~ increment by {$inc} removed";
+						}
+						else
+						{
+							$return .= "{$tabs}// ~ optimization DISABLED ~ increment by {$inc} could be removed";
+						}
 					}
 					
 					$var_name = self::$var_name;
@@ -419,6 +439,11 @@ PHP;
 				. PHP_EOL
 				. PHP_EOL
 				. $this->php;
+		}
+		
+		function render(){
+			$fn = eval('return function(){' . call_user_func_array(array($this, 'getPHP'), func_get_args()) . PHP_EOL . '};');
+			return $fn();
 		}
 		
 		function render(){
