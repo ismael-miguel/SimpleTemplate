@@ -277,7 +277,7 @@ PHP;
 				'global' => function($data)use(&$replacement, &$brackets, &$tabs){
 					$data = self::split_values($data, ' ');
 					
-					return $tabs . self::render_var(array_shift($data)) . ' = $GLOBALS[\'' . join('\'][\'', $data) . '\'];';
+					return $tabs . self::render_var(array_shift($data), false) . ' = $GLOBALS[\'' . join('\'][\'', $data) . '\'];';
 				},
 				'call' => function($data)use(&$replacement, &$brackets, &$tabs){
 					preg_match('@^\s*(?<fn>' . self::$regex['var'] . ')\s*(?:into\s*(?<into>' . self::$regex['var'] . ')\s*)?(?<args>.*?)$@', $data, $bits);
