@@ -2,9 +2,9 @@
 
 	class SimpleTemplate {
 		
-		private static $version = '0.2';
-		
+		private static $version = '0.3';
 		private static $var_name = 'DATA';
+		private static $default_var_name = '_';
 		
 		private static $regex = array(
 			'var' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?)',
@@ -64,7 +64,7 @@ $FN = array(
 PHP;
 
 		private static function render_var($name = null, $safe = true){
-			preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name, $bits);
+			preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
 			
 			$var = '$' . self::$var_name . ($bits['var'] ? '[\'' . join('\'][\'', explode('.', $bits['var'])) . '\']' : '');
 			
@@ -197,19 +197,19 @@ PHP;
 					{
 						--$brackets;
 					
-						return $tabs . '}else ' . $replacement['if']($data[1]);
+						return substr($tabs, 1) . '}else ' . $replacement['if']($data[1]);
 					}
 					else
 					{
-						return $tabs . '}else{';
+						return substr($tabs, 1) . '}else{';
 					}
 				},
 				'each' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
-					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*as\s*(?<as>' . self::$regex['var'] . ')(?:\s*key\s*(?<key>' . self::$regex['var'] . ')\s*)?$@', $data, $bits);
+					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?:as\s*(?<as>' . self::$regex['var'] . ')(?:\s*key\s*(?<key>' . self::$regex['var'] . ')\s*)?)?$@', $data, $bits);
 					
-					return $tabs . 'foreach((array)' . self::render_var($bits['var']) . ' as ' . (isset($bits['key']) ? self::render_var($bits['key'], false) . ' => ': '') . self::render_var($bits['as'], false) . '){';
+					return $tabs . 'foreach((array)' . self::render_var($bits['var']) . ' as ' . (isset($bits['key']) ? self::render_var($bits['key'], false) . ' => ': '') . self::render_var(isset($bits['as']) ? $bits['as'] : '', false) . '){';
 				},
 				'while' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
@@ -220,7 +220,7 @@ PHP;
 					++$brackets;
 					
 					return preg_replace_callback(
-						'@(?<var>' . self::$regex['var'] . ')(?:\s*from\s*(?<start>' . self::$regex['var_value'] . '))?(?:\s*to\s*(?<end>' . self::$regex['var_value'] . '))(?:\s*step\s*(?<step>' . self::$regex['var_value'] . '))?@',
+						'@(?<var>' . self::$regex['var'] . ')?\s*(?:from\s*(?<start>' . self::$regex['var_value'] . '))?(?:\s*to\s*(?<end>' . self::$regex['var_value'] . '))(?:\s*step\s*(?<step>' . self::$regex['var_value'] . '))?@',
 						function($matches)use(&$replacement, &$brackets, &$tabs){
 						
 							$values = array(
@@ -246,7 +246,7 @@ PHP;
 								}
 								else
 								{
-								$return = "{$tabs}// ~ optimization DISABLE ~ results could be inlined\r\n{$return}range({$values['start']}, {$values['end']}, abs({$values['step']}))";
+									$return = "{$tabs}// ~ optimization DISABLE ~ results could be inlined\r\n{$return}range({$values['start']}, {$values['end']}, abs({$values['step']}))";
 								}
 							}
 							else
@@ -254,25 +254,67 @@ PHP;
 								$return .= 'range(' . $values['start'] . ', ' . $values['end'] . ', abs(' . $values['step'] . '))';
 							}
 							
-							return $return . ' as ' . self::render_var($matches['var'], false) . '){';
+							return $return . ' as ' . self::render_var(isset($matches['var']) ? $matches['var'] : '', false) . '){';
 						},
 						$data
 					);
 				},
 				'set' => function($data)use(&$replacement, &$brackets, &$tabs){
-					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?<values>.*)$@', $data, $bits);
-					
+					preg_match($q='@^\s*(?<op>[\+\-\*\\\/\%])?\s*(?<var>' . self::$regex['var'] . ')\s*(?<op_val>' . self::$regex['var_value'] . ')?\s*(?<values>.*)$@', $data, $bits);
+					echo$q,PHP_EOL;
 					$values = self::parse_values($bits['values']);
 					$count = count($values);
 					
+					$return = $tabs . self::render_var($bits['var'], false) . ' = ';
+					
+					$close = 0;
+					
+					if(isset($bits['op']))
+					{
+						switch($bits['op'])
+						{
+							case '-':
+								$return .= '-';
+							case '+':
+								$return .= 'array_sum($FN[\'array_flat\']((array)';
+								$close = 2;
+								break;
+							case '*':
+								$return .= 'array_product($FN[\'array_flat\']((array)';
+								$close = 2;
+								break;
+							case '\\':
+							case '/':
+							case '%':
+								$ops = array(
+									'\\' => 'round(%s / $value)',
+									'/' => '(%s / $value)',
+									'%' => '(%s %% $value)'
+								);
+								
+								$return .= 'array_map(function($value){'
+									.'return ' . sprintf(
+										$ops[$bits['op']],
+										isset($bits['op_val'])
+											? self::parse_value($bits['op_val'])
+											: self::render_var($bits['var'], false)
+									)
+									. ';}, $FN[\'array_flat\']((array)';
+								$close = 2;
+								break;
+						}
+					}
+					
 					if($count > 1)
 					{
-						return $tabs . self::render_var($bits['var'], false) . ' = array(' . implode(',', $values) . ');';
+						$return .= 'array(' . implode(',', $values) . ')';
 					}
 					else
 					{
-						return $tabs . self::render_var($bits['var'], false) . ' = ' . ($count && strlen($values[0]) ? $values[0] : 'null') . ';';
+						$return .= ($count && strlen($values[0]) ? $values[0] : 'null');
 					}
+					
+					return $return . str_repeat(')', $close) . ';';
 				},
 				'global' => function($data)use(&$replacement, &$brackets, &$tabs){
 					$data = self::split_values($data, ' ');
