@@ -260,8 +260,8 @@ PHP;
 					);
 				},
 				'set' => function($data)use(&$replacement, &$brackets, &$tabs){
-					preg_match($q='@^\s*(?<op>[\+\-\*\\\/\%])?\s*(?<var>' . self::$regex['var'] . ')\s*(?<op_val>' . self::$regex['var_value'] . ')?\s*(?<values>.*)$@', $data, $bits);
-					echo$q,PHP_EOL;
+					preg_match('@^\s*(?<op>[\+\-\*\\\/\%])?\s*(?<var>' . self::$regex['var'] . ')\s*(?:(?<op_val>' . self::$regex['var_value'] . ')\s)?\s*(?<values>.*)$@', $data, $bits);
+					
 					$values = self::parse_values($bits['values']);
 					$count = count($values);
 					
@@ -292,7 +292,7 @@ PHP;
 									'%' => '(%s %% $value)'
 								);
 								
-								$return .= 'array_map(function($value){'
+								$return .= 'array_map(function($value)use(&$' . self::$var_name . '){'
 									.'return ' . sprintf(
 										$ops[$bits['op']],
 										isset($bits['op_val'])
