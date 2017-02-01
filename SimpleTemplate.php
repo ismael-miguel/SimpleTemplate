@@ -2,14 +2,14 @@
 
 	class SimpleTemplate {
 		
-		private static $version = '0.3';
+		private static $version = '0.4';
 		private static $var_name = 'DATA';
 		private static $default_var_name = '_';
 		
 		private static $regex = array(
 			'var' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?)',
-			'value' => '(?:(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)',
-			'var_value' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?|(?:"[^"]*")|[\-+]?\d*(?:\.\d*)?|true|false)'
+			'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false)',
+			'var_value' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?|(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false)'
 		);
 		
 		private $data = array();
@@ -20,8 +20,9 @@
 		private $php = <<<'PHP'
 // - FUNCTION BOILERPLATE
 $FN = array(
-	'array_flat' => function(array $array) {
+	'array_flat' => function() {
 		$return = array();
+		$array = func_get_args();
 		array_walk_recursive($array, function($value)use(&$return){
 			$return[] = $value;
 		});
@@ -72,7 +73,9 @@ PHP;
 		}
 		
 		private static function split_values($values, $delimiter = '\s*,\s*'){
-			return preg_split('@(' . $delimiter . ')(?=(?:[^"]|"[^"]*")*$)@', $values);
+			// http://stackoverflow.com/a/5696141/ --> regex quoted string
+			// http://stackoverflow.com/a/632552/ --> regex to match $delimiter outside quotes
+			return preg_split('@(' . $delimiter . ')(?=(?:[^"]|"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")*$)@', $values);
 		}
 		
 		private static function parse_values($values, $delimiter = '\s*,\s*', $safe = true){
@@ -108,10 +111,10 @@ PHP;
 						'greater' => '%s > %s',
 						'multiple' => '!(%s %% %s)',
 						'mod' => '%s %% %s',
-						'matches' => 'preg_match(%s, %s)'
+						'matches' => 'preg_match(%$2s, %$1s)'
 					);
 					
-					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater|a|instance|multiple|mod|matches)?\s*(?:of|to|than)?@', $data, $bits);
+					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater|a|instance|multiple|mod|matches)?\s*(?:of|to|than)?\s*@', $data, $bits);
 					
 					return (isset($bits['not']) && $bits['not'] !== '' ? '!': '') . '(' . sprintf($symbols[isset($bits['operation']) ? $bits['operation']: ''], $var1, $var2) . ')';
 				},
@@ -168,7 +171,7 @@ PHP;
 					
 					$separator = $bits['separator'] ? self::parse_value($bits['separator']): '\'\'';
 					
-					return $tabs . 'echo implode(' . $separator . ', $FN[\'array_flat\']((array)' . implode(',(array)', self::parse_values($bits['data'])) . '));';
+					return $tabs . 'echo implode(' . $separator . ', $FN[\'array_flat\'](' . implode(', ', self::parse_values($bits['data'])) . '));';
 				},
 				'echol' => function($data)use(&$replacement, &$brackets, &$tabs){
 					return $replacement['echo']($data) . 'echo PHP_EOL;';
@@ -191,18 +194,22 @@ PHP;
 					return $tabs . 'if(' . self::parse_boolean($data) . '){';
 				},
 				'else' => function($data)use(&$replacement, &$brackets, &$tabs){
-					$data = explode(' ', $data, 2);
+					preg_match('@(?<if>if)(?<data>.*)@', $data, $bits);
 					
-					if($data[0] === 'if')
+					$return = substr($tabs, 1) . '}else';
+					
+					if($bits['if'])
 					{
 						--$brackets;
 					
-						return substr($tabs, 1) . '}else ' . $replacement['if']($data[1]);
+						$return .= $replacement['if']($bits['data']);
 					}
 					else
 					{
-						return substr($tabs, 1) . '}else{';
+						$return .= ' {';
 					}
+					
+					return $return;
 				},
 				'each' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
