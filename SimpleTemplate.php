@@ -104,8 +104,35 @@ $FN = array(
 		
 		return $_;
 	},
-	'len' => function(){
+	'len' => function($args){
+		$result = array();
 		
+		if(func_num_args() > 1)
+		{
+			$args = func_get_args();
+		}
+		
+		foreach($args as $arg)
+		{
+			switch(gettype($arg))
+			{
+				case 'array':
+					$result[] = count($arg);
+					break;
+				case 'string':
+					$result[] = strlen($arg);
+					break;
+				case 'integer':
+				case 'double':
+				case 'float':
+					$result[] = 0;
+					break;
+				default:
+					$result[] = null;
+			}
+		}
+		
+		return $result;
 	}
 );
 // - END FUNCTION BOILERPLATE -
@@ -388,7 +415,11 @@ PHP;
 					return $tabs . ($bits['into'] ? self::render_var($bits['into'], false) . ' = ' : '')
 						. 'call_user_func_array('
 							. 'isset(' . $var . ') && is_callable(' . $var . ')'
-								. '? ' . $var . ' : "' . str_replace('.', '_', $bits['fn']) . '", '
+								. '? ' . $var
+								. ': (isset($FN["' . $bits['fn'] . '"])'
+									. '? $FN["' . $bits['fn'] . '"]'
+									.': "' . str_replace('.', '_', $bits['fn']) . '"'
+								. '), '
 							. 'array(' . implode(',', self::parse_values($bits['args'])) . '));';
 				},
 				'php' => function($data)use(&$replacement, &$brackets, &$tabs){
@@ -455,7 +486,7 @@ PHP;
 			$this->php .= "\r\necho trim(<<<'" . self::$var_name . "{$UUID}'\r\n"
 				. preg_replace_callback(
 					// http://stackoverflow.com/a/6464500
-					'~{@(echoj?l?|print|if|else|for|while|each|set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
+					'~{@(echoj?l?|print|if|else|for|while|each|set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~',
 					function($matches)use(&$replacement, &$brackets, &$tabs, &$UUID){
 						
 						$tabs = $brackets
