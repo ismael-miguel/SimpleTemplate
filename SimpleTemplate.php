@@ -8,8 +8,8 @@
 		
 		private static $regex = array(
 			'var' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?)',
-			'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false)',
-			'var_value' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?|(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false)'
+			'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false|null)',
+			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?)'
 		);
 		
 		private $data = array();
@@ -577,7 +577,13 @@ PHP;
 		}
 		
 		function render(){
-			$fn = eval('return function(){' . call_user_func_array(array($this, 'getPHP'), func_get_args()) . PHP_EOL . '};');
+			$fn = eval('return function(){'
+					. PHP_EOL
+					. call_user_func_array(array($this, 'getPHP'), func_get_args())
+					. PHP_EOL
+				. '};'
+			);
+			
 			return $fn();
 		}
 		
