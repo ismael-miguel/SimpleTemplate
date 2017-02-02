@@ -28,35 +28,81 @@ $FN = array(
 		});
 		return $return;
 	},
-	'inc' => function(&$_, $by = 1){
+	'inc' => function($_, $by = 1){
+		// if there's no increment value
 		if(!$by)
 		{
 			return $_;
 		}
 		
-		switch(gettype($_))
+		// if there's no value
+		if(!$_)
 		{
-			case 'NULL':
-			case 'null':
-				$_ = $by;
-				break;
-			case 'integer':
-			case 'double':
-			case 'float':
-				$_ += $by;
-				break;
-			case 'string':
-				if($_ === '')
-				{
-					break;
-				}
-				
-				for($i = 0; $i < $by; $i++)
-				{
-					++$_;
-				}
-				break;
+			return $by;
 		}
+		
+		$fn = function($_, $by){
+			switch(gettype($_))
+			{
+				case 'NULL':
+				case 'null':
+					return $by;
+				case 'integer':
+				case 'double':
+				case 'float':
+					return $_ + $by;
+					break;
+				case 'string':
+					if($_ === '')
+					{
+						return '';
+					}
+					
+					$_by = abs($by);
+					
+					for($i = 0; $i < $_by; $i++)
+					{
+						if($by > 0)
+						{
+							++$_;
+						}
+						else
+						{
+							$last = strlen($_) - 1;
+							
+							if($_[$last] === 'a' || $_[$last] === 'A')
+							{
+								// handles aaaa -> zzz
+								$_ = preg_replace_callback('@[aA]+$@', function($str){
+									return str_repeat($str[0][0] === 'a' ? 'z': 'Z', strlen($str[0]) - 1);
+								}, $_);
+							}
+							else
+							{
+								$_[$last] = chr(ord($_[$last]) - 1);
+							}
+						}
+					}
+					
+					return $_;
+				default:
+					return $by;
+			}
+		};
+
+		
+		if(gettype($_) === 'array')
+		{
+			array_walk_recursive($_, function(&$value)use(&$fn, &$by){
+				$value = $fn($value, $by);
+			});
+		}
+		else
+		{
+			$_ = $fn($_, $by);
+		}
+		
+		return $_;
 	}
 );
 // - END FUNCTION BOILERPLATE -
@@ -147,6 +193,9 @@ PHP;
 			
 			$brackets = 0;
 			$tabs = '';
+			
+			// ALMOST unguessable name, to avoid syntax errors
+			$UUID = mt_rand() . time() . sha1($str);
 			
 			$this->optimize = !!$optimize;
 			
@@ -360,7 +409,7 @@ PHP;
 						}
 						else
 						{
-							$return .= "{$tabs}// ~ optimization DISABLED ~ increment by {$inc} could be removed\r\n";
+							$return .= "{$tabs}// ~ optimization DISABLED ~ increment by {$inc} could be removed" . PHP_EOL;
 						}
 					}
 					
@@ -368,24 +417,12 @@ PHP;
 					
 					foreach($values as $value)
 					{
-						if(!isset($value[0]) || $value[0] !== '$')
+						if(!isset($value[0]) && !self::is_value($value[0]))
 						{
 							continue;
 						}
 						
-						$return .= <<<PHP
-{$tabs}if(gettype({$value})==='array')
-{$tabs}{
-{$tabs}	array_walk_recursive({$value}, function(&\$value)use(&\$FN, &\${$var_name}){
-{$tabs}		\$FN['inc'](\$value, {$inc});
-{$tabs}	});
-{$tabs}}
-{$tabs}else
-{$tabs}{
-{$tabs}	\$FN['inc']({$value}, {$inc});
-{$tabs}}
-
-PHP;
+						$return .= "{$tabs}{$value} = \$FN['inc']({$value}, {$inc});" . PHP_EOL;
 					}
 					
 					return $return;
@@ -412,11 +449,11 @@ PHP;
 				}
 			);
 				
-			$this->php .= "\r\necho trim(<<<'" . self::$var_name . "'\r\n"
+			$this->php .= "\r\necho trim(<<<'" . self::$var_name . "{$UUID}'\r\n"
 				. preg_replace_callback(
 					// http://stackoverflow.com/a/6464500
 					'~{@(echoj?l?|print|if|else|for|while|each|set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~i',
-					function($matches)use(&$replacement, &$brackets, &$tabs){
+					function($matches)use(&$replacement, &$brackets, &$tabs, &$UUID){
 						
 						$tabs = $brackets
 							? str_repeat("\t", $brackets - ($matches[1] === '/'))
@@ -427,16 +464,16 @@ PHP;
 						$php = $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null);
 						
 						
-						return "\r\n{$var_name}\r\n);\r\n{$tabs}// {$matches[0]}\r\n{$php}\r\n\r\n{$tabs}echo trim(<<<'{$var_name}'\r\n";
+						return "\r\n{$var_name}{$UUID}\r\n);\r\n{$tabs}// {$matches[0]}\r\n{$php}\r\n\r\n{$tabs}echo trim(<<<'{$var_name}{$UUID}'\r\n";
 					},
 					$str . ''
 				)
-				. "\r\n" . self::$var_name . "\r\n);\r\n";
+				. "\r\n" . self::$var_name . "{$UUID}\r\n);\r\n";
 			
 			$this->php = preg_replace(
 				array(
-					'@\r\n\t*echo\s*trim\(<<<\'' . self::$var_name . '\'(?:\s*\r\n)?' . self::$var_name . '\r\n\);@',
-					'@\r\n' . self::$var_name . '\r\n\);(\r\n)*\t*echo\s*trim\(<<<\'' . self::$var_name . '\'@'
+					'@\r\n\t*echo\s*trim\(<<<\'' . self::$var_name . $UUID . '\'(?:\s*\r\n)?' . self::$var_name . $UUID . '\r\n\);@',
+					'@\r\n' . self::$var_name . $UUID . '\r\n\);(\r\n)*\t*echo\s*trim\(<<<\'' . self::$var_name . $UUID . '\'@'
 				),
 				array(
 					'', ''
