@@ -133,6 +133,19 @@ $FN = array(
 		}
 		
 		return $result;
+	},
+	'repeat' => function($_, $times = 1){
+		if($times < 1)
+		{
+			return '';
+		}
+		
+		
+		array_walk_recursive($_, function(&$value)use(&$times){
+			$value = str_repeat($value, $times);
+		});
+		
+		return $_;
 	}
 );
 // - END FUNCTION BOILERPLATE -
