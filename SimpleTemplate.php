@@ -103,6 +103,9 @@ $FN = array(
 		}
 		
 		return $_;
+	},
+	'len' => function(){
+		
 	}
 );
 // - END FUNCTION BOILERPLATE -
@@ -157,7 +160,7 @@ PHP;
 						'greater' => '%s > %s',
 						'multiple' => '!(%s %% %s)',
 						'mod' => '%s %% %s',
-						'matches' => 'preg_match(%$2s, %$1s)'
+						'matches' => 'preg_match(%2$s, %1$s)'
 					);
 					
 					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater|a|instance|multiple|mod|matches)?\s*(?:of|to|than)?\s*@', $data, $bits);
