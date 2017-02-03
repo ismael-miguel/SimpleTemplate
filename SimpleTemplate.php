@@ -373,13 +373,23 @@ PHP;
 						switch($bits['op'])
 						{
 							case '-':
-								$return .= '-';
+								$return .= <<<PHP
+call_user_func_array(function(){
+{$tabs}	\$args = func_get_args();
+{$tabs}	\$initial = array_shift(\$args);
+{$tabs}	return array_reduce(\$args, function(\$carry, \$value){
+{$tabs}		return \$carry - \$value;
+{$tabs}	}, \$initial);
+{$tabs}}, \$FN['array_flat'](
+PHP;
+								$close = 2;
+								break;
 							case '+':
-								$return .= 'array_sum($FN[\'array_flat\']((array)';
+								$return .= 'array_sum($FN[\'array_flat\'](';
 								$close = 2;
 								break;
 							case '*':
-								$return .= 'array_product($FN[\'array_flat\']((array)';
+								$return .= 'array_product($FN[\'array_flat\'](';
 								$close = 2;
 								break;
 							case '\\':
@@ -398,7 +408,7 @@ PHP;
 											? self::parse_value($bits['op_val'])
 											: self::render_var($bits['var'], false)
 									)
-									. ';}, $FN[\'array_flat\']((array)';
+									. ';}, $FN[\'array_flat\'](';
 								$close = 2;
 								break;
 						}
