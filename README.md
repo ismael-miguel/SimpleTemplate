@@ -7,7 +7,7 @@ The performance of it isn't great, but works fine **as far as I know**.
 
 <hr>
 
-##How to use it
+## How to use it
 
 1- You need to load a template code:
 
@@ -34,13 +34,13 @@ You will find some notes about optimization and what-not.
 
 Please, BEWARE of bad code!!!
 
-##How it works
+## How it works
 
 I've tried to keep the syntax as easy as possible, but still allow some flexibility. Since this is a simple engine, it isn't that powerfull.
 
 The way the engine works is by converting the input into syntactically valid PHP.
 
-###The syntax:
+### The syntax:
 
 Every command has the following structure: `{@<command> arguments}`.
 
@@ -48,7 +48,7 @@ Each command has a different structure for the `arguments` bit.
 
 Anything outside those is considered output.
 
-####Values and variables:
+#### Values and variables:
 
 A variable is any alphanumeric string that doesn't have a special meaning. Arrays' items can be accessed by writting the key after a period `like.this.example.here`.  
 Adding `U <name>` or `unsafe <name>` allows the use of variables without protection against undefined indexes.
@@ -57,7 +57,7 @@ A value is everything else, like numbers, `"strings"`, `true` and `false`. Strin
 
 The variable `argv` will contain the arguments passed while `argc` will have the number of arguments.
 
-###The commands:
+### The commands:
 
  - `//`
     
@@ -193,7 +193,7 @@ More changes may come in the future, like expression (like `a + b / c % d . e`) 
 
 <hr>
 
-##Some useless stuff:
+## Some useless stuff:
 
 It is possible to do **some** code golfing. I do not advise, but it works.
 
