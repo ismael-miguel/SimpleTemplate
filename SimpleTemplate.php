@@ -9,7 +9,7 @@
 		private static $regex = array(
 			'var' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?)',
 			'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false|null)',
-			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[0\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
+			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
 		);
 		
 		private $data = array();
@@ -181,7 +181,7 @@ PHP;
 		private static function parse_boolean($data){
 			if(
 				!preg_match(
-					'@(' . self::$regex['var_value'] . ')\s*(?:(is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)|matches))?|has(?:\s*not)?)\s*(' . self::$regex['var_value'] . '))?@',
+					'@(' . self::$regex['var_value'] . ')\s*(?:(isset|is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)|matches))?|has(?:\s*not)?)\s*(' . self::$regex['var_value'] . ')?)?@',
 					$data, $bits
 				)
 			)
@@ -205,18 +205,21 @@ PHP;
 					
 					preg_match('@(?<not>not)?\s*(?<operation>equal|lower|greater|a|instance|multiple|mod|matches)?\s*(?:of|to|than)?\s*@', $data, $bits);
 					
-					return (isset($bits['not']) && $bits['not'] !== '' ? '!': '') . '(' . sprintf($symbols[isset($bits['operation']) ? $bits['operation']: ''], $var1, $var2) . ')';
+					return (isset($bits['not']) && $bits['not'] !== '' ? '!': '') . '(' . sprintf($symbols[isset($bits['operation']) ? $bits['operation']: ''], self::parse_value($var1), self::parse_value($var2)) . ')';
 				},
 				'has' => function($data, $var1, $var2){
-					return ($data === 'not' ? '!': '') . 'array_key_exists((array)' . $var1 . ', ' . $var2 . ')';
+					return ($data === 'not' ? '!': '') . 'array_key_exists((array)' . self::parse_value($var1) . ', ' . self::parse_value($var2) . ')';
+				},
+				'isset' => function($data, $var1){
+					return ($data === 'not' ? '!': '') . 'isset(' . self::render_var($var1, false) . ')';
 				}
 			);
 			
-			if(isset($bits[3]))
+			if(isset($bits[2]))
 			{
 				$ops = explode(' ', $bits[2], 2);
 				
-				return $fn[$ops[0]](isset($ops[1]) ? $ops[1]: '', self::parse_value($bits[1]), self::parse_value($bits[3]));
+				return $fn[$ops[0]](isset($ops[1]) ? $ops[1]: '', $bits[1], isset($bits[3]) ? $bits[3] : self::$default_var_name);
 			}
 			else
 			{
