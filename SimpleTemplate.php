@@ -9,7 +9,7 @@
 		private static $regex = array(
 			'var' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?)',
 			'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false|null)',
-			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
+			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[0\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
 		);
 		
 		private $data = array();
@@ -446,7 +446,9 @@ PHP;
 							. 'array(' . implode(',', self::parse_values($bits['args'])) . '));';
 				},
 				'php' => function($data)use(&$replacement, &$brackets, &$tabs){
-					return $tabs . $data . ';';
+					return $tabs . 'call_user_func_array(function($FN, &$' . self::$var_name . '){' . PHP_EOL
+					       . "{$tabs}\t{$data};" . PHP_EOL
+					       . $tabs . '}, array($FN, &$' . self::$var_name . '));';
 				},
 				'return' => function($data)use(&$replacement, &$brackets, &$tabs){
 					return $tabs . 'return ' . ($data ? self::parse_value($data): '').';';
