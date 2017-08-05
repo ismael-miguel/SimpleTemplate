@@ -9,7 +9,7 @@
 		private static $regex = array(
 			'var' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)?)',
 			'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false|null)',
-			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[0\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
+			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
 		);
 		
 		private $data = array();
