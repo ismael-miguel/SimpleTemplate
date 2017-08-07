@@ -111,7 +111,7 @@ The variable `argv` will contain the arguments passed while `argc` will have the
  
      It is used for a condition.
 	 
-     Structure: `if <val>[ has [not] <val>|is[ not][equal[ to]|lower[ than]|greater[ than]|a|instance[ of]|multiple[ of]|mod[ of]] <val>]`. Anything between `[square brackets]` is optional.
+     Structure: `if <val>[ isset|has [not] <val>|is[ not][equal[ to]|lower[ than]|greater[ than]|a|instance[ of]|multiple[ of]|mod[ of]] <val>]`. Anything between `[square brackets]` is optional.
 	 
      `if <val> has` -> Sees if a particular key exists on `<val>`
 	 
