@@ -2,7 +2,7 @@
 
 	class SimpleTemplate {
 		
-		private static $version = '0.4';
+		private static $version = '0.5';
 		private static $var_name = 'DATA';
 		private static $default_var_name = '_';
 		
@@ -583,7 +583,7 @@ PHP;
 			
 			return '// - DATA BOILERPLATE'
 				. PHP_EOL
-				. '$DATA = ' . var_export($this->data, true) . ';'
+				. '$' . self::$var_name . ' = ' . var_export($this->data, true) . ';'
 				. PHP_EOL
 				. '// - END DATA BOILERPLATE -'
 				. PHP_EOL
