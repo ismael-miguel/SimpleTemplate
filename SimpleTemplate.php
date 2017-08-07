@@ -1,8 +1,176 @@
 <?php
 
+	// contains all functions needed
+	final class SimpleTemplate_FN {
+		private static $fn = array();
+		private static $init = false;
+		
+		private static function init(){
+			self::$init = true;
+			
+			self::$fn = array(
+				'array_flat' => function() {
+					$return = array();
+					$array = func_get_args();
+					array_walk_recursive($array, function($value)use(&$return){
+						$return[] = $value;
+					});
+					return $return;
+				},
+				'inc' => function($_, $by = 1){
+					// if there's no increment value
+					if(!$by)
+					{
+						return $_;
+					}
+					
+					// if there's no value
+					if(!$_)
+					{
+						return $by;
+					}
+					
+					$fn = function($_, $by){
+						switch(gettype($_))
+						{
+							case 'NULL':
+							case 'null':
+								return $by;
+							case 'integer':
+							case 'double':
+							case 'float':
+								return $_ + $by;
+								break;
+							case 'string':
+								if($_ === '')
+								{
+									return '';
+								}
+								
+								$_by = abs($by);
+								
+								for($i = 0; $i < $_by; $i++)
+								{
+									if($by > 0)
+									{
+										++$_;
+									}
+									else
+									{
+										$last = strlen($_) - 1;
+										
+										if($_[$last] === 'a' || $_[$last] === 'A')
+										{
+											// handles aaaa -> zzz
+											$_ = preg_replace_callback('@[aA]+$@', function($str){
+												return str_repeat($str[0][0] === 'a' ? 'z': 'Z', strlen($str[0]) - 1);
+											}, $_);
+										}
+										else
+										{
+											$_[$last] = chr(ord($_[$last]) - 1);
+										}
+									}
+								}
+								
+								return $_;
+							default:
+								return $by;
+						}
+					};
+	
+					
+					if(gettype($_) === 'array')
+					{
+						array_walk_recursive($_, function(&$value)use(&$fn, &$by){
+							$value = $fn($value, $by);
+						});
+					}
+					else
+					{
+						$_ = $fn($_, $by);
+					}
+					
+					return $_;
+				},
+				'len' => function($args){
+					$result = array();
+					
+					if(func_num_args() > 1)
+					{
+						$args = func_get_args();
+					}
+					
+					foreach($args as $arg)
+					{
+						switch(gettype($arg))
+						{
+							case 'array':
+								$result[] = count($arg);
+								break;
+							case 'string':
+								$result[] = strlen($arg);
+								break;
+							case 'integer':
+							case 'double':
+							case 'float':
+								$result[] = 0;
+								break;
+							default:
+								$result[] = null;
+						}
+					}
+					
+					return $result;
+				},
+				'repeat' => function($_, $times = 1){
+					if($times < 1)
+					{
+						return '';
+					}
+					
+					array_walk_recursive($_, function(&$value)use(&$times){
+						$value = str_repeat($value, $times);
+					});
+					
+					return $_;
+				}
+			);
+		}
+		
+		static function call()
+		{
+			if(!self::$init)
+			{
+				self::init();
+			}
+			
+			$argv = func_get_args();
+			$fn = array_shift($argv);
+			
+			if(!self::$fn[$fn])
+			{
+				throw new Exception('Unexisting function ' . $fn);
+			}
+			
+			return call_user_func_array(self::$fn[$fn], $argv);
+		}
+		
+		static function name_list()
+		{
+			if(!self::$init)
+			{
+				self::init();
+			}
+			
+			return array_keys(self::$fn);
+		}
+	}
+
+	// base class
 	class SimpleTemplate {
 		
-		private static $version = '0.5';
+		private static $version = '0.51';
 		private static $var_name = 'DATA';
 		private static $default_var_name = '_';
 		
@@ -19,134 +187,17 @@
 		// array_flat -> http://stackoverflow.com/a/1320156
 		private $php = <<<'PHP'
 // - FUNCTION BOILERPLATE
-$FN = array(
-	'array_flat' => function() {
-		$return = array();
-		$array = func_get_args();
-		array_walk_recursive($array, function($value)use(&$return){
-			$return[] = $value;
-		});
-		return $return;
-	},
-	'inc' => function($_, $by = 1){
-		// if there's no increment value
-		if(!$by)
-		{
-			return $_;
-		}
-		
-		// if there's no value
-		if(!$_)
-		{
-			return $by;
-		}
-		
-		$fn = function($_, $by){
-			switch(gettype($_))
-			{
-				case 'NULL':
-				case 'null':
-					return $by;
-				case 'integer':
-				case 'double':
-				case 'float':
-					return $_ + $by;
-					break;
-				case 'string':
-					if($_ === '')
-					{
-						return '';
-					}
-					
-					$_by = abs($by);
-					
-					for($i = 0; $i < $_by; $i++)
-					{
-						if($by > 0)
-						{
-							++$_;
-						}
-						else
-						{
-							$last = strlen($_) - 1;
-							
-							if($_[$last] === 'a' || $_[$last] === 'A')
-							{
-								// handles aaaa -> zzz
-								$_ = preg_replace_callback('@[aA]+$@', function($str){
-									return str_repeat($str[0][0] === 'a' ? 'z': 'Z', strlen($str[0]) - 1);
-								}, $_);
-							}
-							else
-							{
-								$_[$last] = chr(ord($_[$last]) - 1);
-							}
-						}
-					}
-					
-					return $_;
-				default:
-					return $by;
-			}
-		};
+$FN = array();
 
-		
-		if(gettype($_) === 'array')
-		{
-			array_walk_recursive($_, function(&$value)use(&$fn, &$by){
-				$value = $fn($value, $by);
-			});
-		}
-		else
-		{
-			$_ = $fn($_, $by);
-		}
-		
-		return $_;
+array_map(function($name)use(&$FN){
+		$FN[$name] = function()use($name){
+			return call_user_func_array(
+				'SimpleTemplate_FN::call',
+				array($name, func_get_args())
+			);
+		};
 	},
-	'len' => function($args){
-		$result = array();
-		
-		if(func_num_args() > 1)
-		{
-			$args = func_get_args();
-		}
-		
-		foreach($args as $arg)
-		{
-			switch(gettype($arg))
-			{
-				case 'array':
-					$result[] = count($arg);
-					break;
-				case 'string':
-					$result[] = strlen($arg);
-					break;
-				case 'integer':
-				case 'double':
-				case 'float':
-					$result[] = 0;
-					break;
-				default:
-					$result[] = null;
-			}
-		}
-		
-		return $result;
-	},
-	'repeat' => function($_, $times = 1){
-		if($times < 1)
-		{
-			return '';
-		}
-		
-		
-		array_walk_recursive($_, function(&$value)use(&$times){
-			$value = str_repeat($value, $times);
-		});
-		
-		return $_;
-	}
+	SimpleTemplate_FN::name_list()
 );
 // - END FUNCTION BOILERPLATE -
 
@@ -450,8 +501,8 @@ PHP;
 				},
 				'php' => function($data)use(&$replacement, &$brackets, &$tabs){
 					return $tabs . 'call_user_func_array(function($FN, &$' . self::$var_name . '){' . PHP_EOL
-					       . "{$tabs}\t{$data};" . PHP_EOL
-					       . $tabs . '}, array($FN, &$' . self::$var_name . '));';
+						   . "{$tabs}\t{$data};" . PHP_EOL
+						   . $tabs . '}, array($FN, &$' . self::$var_name . '));';
 				},
 				'return' => function($data)use(&$replacement, &$brackets, &$tabs){
 					return $tabs . 'return ' . ($data ? self::parse_value($data): '').';';
@@ -493,8 +544,8 @@ PHP;
 				'fn' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
-				    $version = self::$version;
-				    $var_name = self::$var_name;
+					$version = self::$version;
+					$var_name = self::$var_name;
 					
 					return $tabs . self::render_var($data, false) . <<<PHP
  = function()use(&\$FN, &\$_){
