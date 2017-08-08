@@ -153,6 +153,13 @@ The variable `argv` will contain the arguments passed while `argc` will have the
 	 
     The values from the array are accessed with `<array>.<key>`.
     
+ - `unset`
+ 
+    Structure: `unset <var>[, <vars>]`
+	 
+    Deletes a set of created variables.
+    Any non-variable values will be removed and a warning will be added to the code.
+    
  - `global`
  
     Structure: `global <save_var> <global_var_name>`
