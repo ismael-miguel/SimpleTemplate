@@ -9,7 +9,8 @@
 			self::$init = true;
 			
 			self::$fn = array(
-				'array_flat' => function() {
+				// array_flat -> http://stackoverflow.com/a/1320156
+				'array_flat' => function(){
 					$return = array();
 					$array = func_get_args();
 					array_walk_recursive($array, function($value)use(&$return){
@@ -138,8 +139,7 @@
 			);
 		}
 		
-		static function call()
-		{
+		static function call(){
 			if(!self::$init)
 			{
 				self::init();
@@ -156,8 +156,7 @@
 			return call_user_func_array(self::$fn[$fn], $argv);
 		}
 		
-		static function name_list()
-		{
+		static function name_list(){
 			if(!self::$init)
 			{
 				self::init();
@@ -166,11 +165,11 @@
 			return array_keys(self::$fn);
 		}
 	}
-
-	// base class
-	class SimpleTemplate {
+	
+	// compiler class
+	class SimpleTemplate_Compiler {
+		private $UUID = null;
 		
-		private static $version = '0.51';
 		private static $var_name = 'DATA';
 		private static $default_var_name = '_';
 		
@@ -180,12 +179,8 @@
 			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
 		);
 		
-		private $data = array();
-		
-		private $optimize = true;
-		
-		// array_flat -> http://stackoverflow.com/a/1320156
-		private $php = <<<'PHP'
+		private $fn = null;
+		private static $fn_body = <<<'PHP'
 // - FUNCTION BOILERPLATE
 $FN = array();
 
@@ -202,8 +197,12 @@ array_map(function($name)use(&$FN){
 // - END FUNCTION BOILERPLATE -
 
 // - CODE
+%s
+// - END CODE -
 PHP;
-
+		
+		private $php = '';
+		
 		private static function render_var($name = null, $safe = true){
 			preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
 			
@@ -215,7 +214,7 @@ PHP;
 		private static function split_values($values, $delimiter = '\s*,\s*'){
 			// http://stackoverflow.com/a/5696141/ --> regex quoted string
 			// http://stackoverflow.com/a/632552/ --> regex to match $delimiter outside quotes
-			return preg_split('@(' . $delimiter . ')(?=(?:[^"]|"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")*$)@', $values);
+			return preg_split('@(' . ($delimiter ?: '\s*,\s*') . ')(?=(?:[^"]|"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")*$)@', $values);
 		}
 		
 		private static function parse_values($values, $delimiter = '\s*,\s*', $safe = true){
@@ -286,15 +285,12 @@ PHP;
 			return strlen($value) && $value[0] !== '$' && $value[0] !== '(';
 		}
 		
-		function __construct($str, $optimize = true){
-			
-			$brackets = 0;
-			$tabs = '';
-			
+		private function compile($str, $optimize){
 			// ALMOST unguessable name, to avoid syntax errors
 			$UUID = mt_rand() . time() . sha1($str);
 			
-			$this->optimize = !!$optimize;
+			$brackets = 0;
+			$tabs = '';
 			
 			$replacement = array(
 				'/' => function($data)use(&$replacement, &$brackets, &$tabs){
@@ -479,6 +475,24 @@ PHP;
 					
 					return $return . str_repeat(')', $close) . ';';
 				},
+				'unset' => function($data)use(&$replacement, &$brackets, &$tabs){
+					$values = self::parse_values($data, null, false);
+					$vars = array_filter($values, function($var){
+						return !self::is_value($var);
+					});
+					
+					$return = $tabs . (
+						count($values) !== count($vars)
+							? '// Warning: invalid values were passed' . PHP_EOL . $tabs
+							: ''
+					);
+					
+					return $return . (
+						$vars
+							? 'unset(' . implode(',', $vars) . ');'
+							: '// Warning: no values were passed or all were filtered out'
+					);
+				},
 				'global' => function($data)use(&$replacement, &$brackets, &$tabs){
 					$data = self::split_values($data, ' ');
 					
@@ -544,7 +558,7 @@ PHP;
 				'fn' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
-					$version = self::$version;
+					$version = SimpleTemplate::version();
 					$var_name = self::$var_name;
 					
 					return $tabs . self::render_var($data, false) . <<<PHP
@@ -565,7 +579,7 @@ PHP;
 			$this->php .= "\r\necho trim(<<<'" . self::$var_name . "{$UUID}'\r\n"
 				. preg_replace_callback(
 					// http://stackoverflow.com/a/6464500
-					'~{@(echoj?l?|print|if|else|for|while|each|set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~',
+					'~{@(echoj?l?|print|if|else|for|while|each|(?:un)?set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~',
 					function($matches)use(&$replacement, &$brackets, &$tabs, &$UUID){
 						
 						$tabs = $brackets
@@ -598,8 +612,43 @@ PHP;
 			{
 				$this->php .=  "\r\n// AUTO-CLOSE\r\n" . str_repeat('};', $brackets);
 			}
+		}
+		
+		function getPHP(){
+			return $this->php;
+		}
+		
+		function getFN(){
+			if(!$this->fn)
+			{
+				$this->fn = eval('return function($' . self::$var_name . '){'
+						. PHP_EOL
+						. sprintf(self::$fn_body, $this->php)
+						. PHP_EOL
+					. '};'
+				);
+				
+				$this->fn = $this->fn->bindTo($this);
+			}
 			
-			$this->php .= PHP_EOL . '// - END CODE -';
+			return $this->fn;
+		}
+		
+		function __construct(SimpleTemplate $template, $str, $optimize = true){
+			$this->compile($str, $optimize);
+		}
+	}
+
+	// base class
+	class SimpleTemplate {
+		private static $version = '0.6';
+		
+		private $data = array();
+		
+		private $compiler = null;
+		
+		function __construct($str, $optimize = true){
+			$this->compiler = new SimpleTemplate_Compiler($this, $str, $optimize);
 		}
 		
 		function setData($key, $value){
@@ -626,31 +675,19 @@ PHP;
 		}
 		
 		function getPHP(){
+			return $this->compiler->getPHP();
+		}
+		
+		function render(){
 			$this->data['argv'] = func_get_args();
 			$this->data['argc'] = func_num_args();
 			
 			$this->data['VERSION'] = self::$version;
 			$this->data['EOL'] = PHP_EOL;
 			
-			return '// - DATA BOILERPLATE'
-				. PHP_EOL
-				. '$' . self::$var_name . ' = ' . var_export($this->data, true) . ';'
-				. PHP_EOL
-				. '// - END DATA BOILERPLATE -'
-				. PHP_EOL
-				. PHP_EOL
-				. $this->php;
-		}
-		
-		function render(){
-			$fn = eval('return function(){'
-					. PHP_EOL
-					. call_user_func_array(array($this, 'getPHP'), func_get_args())
-					. PHP_EOL
-				. '};'
-			);
+			$fn = $this->compiler->getFN();
 			
-			return $fn();
+			return $fn($this->data);
 		}
 		
 		static function fromFile($path){
@@ -659,5 +696,9 @@ PHP;
 		
 		static function fromString($string){
 			return new self($string);
+		}
+		
+		static function version(){
+			return self::$version;
 		}
 	}
