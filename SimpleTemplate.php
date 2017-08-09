@@ -41,7 +41,6 @@
 							case 'double':
 							case 'float':
 								return $_ + $by;
-								break;
 							case 'string':
 								if($_ === '')
 								{
@@ -101,6 +100,10 @@
 					{
 						$args = func_get_args();
 					}
+					else
+					{
+						$args = array($args);
+					}
 					
 					foreach($args as $arg)
 					{
@@ -139,21 +142,18 @@
 			);
 		}
 		
-		static function call(){
+		static function call($fn, $args = array()){
 			if(!self::$init)
 			{
 				self::init();
 			}
 			
-			$argv = func_get_args();
-			$fn = array_shift($argv);
-			
 			if(!self::$fn[$fn])
 			{
-				throw new Exception('Unexisting function ' . $fn);
+				throw new Exception('Invalid function ' . $fn);
 			}
 			
-			return call_user_func_array(self::$fn[$fn], $argv);
+			return call_user_func_array(self::$fn[$fn], $args);
 		}
 		
 		static function name_list(){
@@ -179,6 +179,9 @@
 			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
 		);
 		
+		private $optimize = true;
+		private $template = null;
+		
 		private $fn = null;
 		private static $fn_body = <<<'PHP'
 // - FUNCTION BOILERPLATE
@@ -186,10 +189,7 @@ $FN = array();
 
 array_map(function($name)use(&$FN){
 		$FN[$name] = function()use($name){
-			return call_user_func_array(
-				'SimpleTemplate_FN::call',
-				array($name, func_get_args())
-			);
+			return SimpleTemplate_FN::call($name, func_get_args());
 		};
 	},
 	SimpleTemplate_FN::name_list()
@@ -408,6 +408,16 @@ PHP;
 						$data
 					);
 				},
+				'do' => function($data)use(&$replacement, &$brackets, &$tabs){
+					++$brackets;
+					
+					return $tabs . 'do{';
+				},
+				'until' => function($data)use(&$replacement, &$brackets, &$tabs){
+					--$brackets;
+					
+					return substr($tabs, 1) . '}while(!(' . self::parse_boolean($data) . '));';
+				},
 				'set' => function($data)use(&$replacement, &$brackets, &$tabs){
 					preg_match('@^\s*(?<op>[\+\-\*\\\/\%])?\s*(?<var>' . self::$regex['var'] . ')\s*(?:(?<op_val>' . self::$regex['var_value'] . ')\s)?\s*(?<values>.*)$@', $data, $bits);
 					
@@ -549,7 +559,7 @@ PHP;
 							continue;
 						}
 						
-						$return .= "{$tabs}{$value} = \$FN['inc']({$value}, {$inc});" . PHP_EOL;
+						$return .= "{$tabs}{$value} = \$FN['inc'](isset({$value})?{$value}:0, {$inc});" . PHP_EOL;
 					}
 					
 					return $return;
@@ -579,7 +589,7 @@ PHP;
 			$this->php .= "\r\necho trim(<<<'" . self::$var_name . "{$UUID}'\r\n"
 				. preg_replace_callback(
 					// http://stackoverflow.com/a/6464500
-					'~{@(echoj?l?|print|if|else|for|while|each|(?:un)?set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~',
+					'~{@(echoj?l?|print|if|else|for|while|each|do|until|(?:un)?set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~',
 					function($matches)use(&$replacement, &$brackets, &$tabs, &$UUID){
 						
 						$tabs = $brackets
@@ -628,20 +638,22 @@ PHP;
 					. '};'
 				);
 				
-				$this->fn = $this->fn->bindTo($this);
+				$this->fn = $this->fn->bindTo($this->template);
 			}
 			
 			return $this->fn;
 		}
 		
 		function __construct(SimpleTemplate $template, $str, $optimize = true){
+		    $this->optimize = $optimize;
+		    $this->template = $template;
 			$this->compile($str, $optimize);
 		}
 	}
 
 	// base class
 	class SimpleTemplate {
-		private static $version = '0.6';
+		private static $version = '0.61';
 		
 		private $data = array();
 		
