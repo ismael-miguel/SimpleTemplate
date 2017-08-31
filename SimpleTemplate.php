@@ -179,7 +179,7 @@
 			'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
 		);
 		
-		private $optimize = true;
+		private $options = array();
 		private $template = null;
 		
 		private $fn = null;
@@ -285,9 +285,9 @@ PHP;
 			return strlen($value) && $value[0] !== '$' && $value[0] !== '(';
 		}
 		
-		private function compile($str, $optimize){
+		private function compile($str){
 			// ALMOST unguessable name, to avoid syntax errors
-			$UUID = mt_rand() . time() . sha1($str);
+			$UUID = str_shuffle(mt_rand() . time() . sha1($str));
 			
 			$brackets = 0;
 			$tabs = '';
@@ -382,7 +382,7 @@ PHP;
 							
 							if(self::is_value($values['start']) && self::is_value($values['end']) && self::is_value($values['step']))
 							{
-								if($this->optimize)
+								if($this->options['optimize'])
 								{
 									$return = "{$tabs}// ~ optimization enabled ~ inlining the results\r\n{$return}" . var_export(
 										range(
@@ -540,7 +540,7 @@ PHP;
 					
 					if(!$inc || $inc === '"0"' || $inc === 'null' || $inc === 'false')
 					{
-						if($this->optimize)
+						if($this->options['optimize'])
 						{
 							return "{$tabs}// ~ optimization enabled ~ increment by {$inc} removed";
 						}
@@ -585,12 +585,14 @@ PHP;
 PHP;
 				}
 			);
-				
-			$this->php .= "\r\necho trim(<<<'" . self::$var_name . "{$UUID}'\r\n"
+			
+			$trim_fn = $this->options['trim'] ? 'trim' : '';
+			
+			$this->php .= "\r\necho {$trim_fn}(<<<'" . self::$var_name . "{$UUID}'\r\n"
 				. preg_replace_callback(
 					// http://stackoverflow.com/a/6464500
 					'~{@(echoj?l?|print|if|else|for|while|each|do|until|(?:un)?set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~',
-					function($matches)use(&$replacement, &$brackets, &$tabs, &$UUID){
+					function($matches)use(&$replacement, &$brackets, &$tabs, &$UUID, &$trim_fn){
 						
 						$tabs = $brackets
 							? str_repeat("\t", $brackets - ($matches[1] === '/'))
@@ -601,7 +603,7 @@ PHP;
 						$php = $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null);
 						
 						
-						return "\r\n{$var_name}{$UUID}\r\n);\r\n{$tabs}// {$matches[0]}\r\n{$php}\r\n\r\n{$tabs}echo trim(<<<'{$var_name}{$UUID}'\r\n";
+						return "\r\n{$var_name}{$UUID}\r\n);\r\n{$tabs}// {$matches[0]}\r\n{$php}\r\n\r\n{$tabs}echo {$trim_fn}(<<<'{$var_name}{$UUID}'\r\n";
 					},
 					$str . ''
 				)
@@ -609,8 +611,8 @@ PHP;
 			
 			$this->php = preg_replace(
 				array(
-					'@\r\n\t*echo\s*trim\(<<<\'' . self::$var_name . $UUID . '\'(?:\s*\r\n)?' . self::$var_name . $UUID . '\r\n\);@',
-					'@\r\n' . self::$var_name . $UUID . '\r\n\);(\r\n)*\t*echo\s*trim\(<<<\'' . self::$var_name . $UUID . '\'@'
+					'@\r\n\t*echo\s*' . $trim_fn . '\(<<<\'' . self::$var_name . $UUID . '\'(?:\s*\r\n)?' . self::$var_name . $UUID . '\r\n\);@',
+					'@\r\n' . self::$var_name . $UUID . '\r\n\);(\r\n)*\t*echo\s*' . $trim_fn . '\(<<<\'' . self::$var_name . $UUID . '\'@'
 				),
 				array(
 					'', ''
@@ -644,23 +646,32 @@ PHP;
 			return $this->fn;
 		}
 		
-		function __construct(SimpleTemplate $template, $str, $optimize = true){
-		    $this->optimize = $optimize;
+		function __construct(SimpleTemplate $template, $str, array $options = array()){
+		    $this->options = $options;
 		    $this->template = $template;
-			$this->compile($str, $optimize);
+			$this->compile($str);
 		}
 	}
 
 	// base class
 	class SimpleTemplate {
-		private static $version = '0.61';
+		private static $version = '0.62';
 		
 		private $data = array();
+		private $settings = array(
+			'optimize' => true,
+			'trim' => false
+		);
 		
 		private $compiler = null;
 		
-		function __construct($str, $optimize = true){
-			$this->compiler = new SimpleTemplate_Compiler($this, $str, $optimize);
+		function __construct($str, array $options = array()){
+			if($options)
+			{
+				$this->settings = array_merge($this->settings, $options);
+			}
+			
+			$this->compiler = new SimpleTemplate_Compiler($this, $str, $this->settings);
 		}
 		
 		function setData($key, $value){
