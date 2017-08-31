@@ -34,6 +34,18 @@ You will find some notes about optimization and what-not.
 
 Please, BEWARE of bad code!!!
 
+## Options:
+
+You can pass some options to the compiler.
+
+These are the options that are available and which values they expect:
+
+ - `optimize`: Accepts `true` or `false` (default: `true`).  
+    Will optimize some things, like inlining the results of the `for` loop or removing an increment by 0.
+ - `trim`: Accepts `true` or `false` (default: `true`).  
+     Defines if the language will trim whitespaces around the code or not.  
+     May cause problems with the output.
+
 ## How it works
 
 I've tried to keep the syntax as easy as possible, but still allow some flexibility. Since this is a simple engine, it isn't that powerfull.
@@ -47,16 +59,6 @@ Every command has the following structure: `{@<command> arguments}`.
 Each command has a different structure for the `arguments` bit.
 
 Anything outside those is considered output.
-
-#### Options:
-
-These are the options that are available and which values they expect:
-
- - `optimize`: Accepts `true` or `false` (default: `true`).  
-    Will optimize some things, like inlining the results of the `for` loop or removing an increment by 0.
- - `trim`: Accepts `true` or `false` (default: `true`).  
-     Defines if the language will trim whitespaces around the code or not.  
-     May cause problems with the output.
 
 #### Values and variables:
 
