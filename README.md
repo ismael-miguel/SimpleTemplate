@@ -34,7 +34,7 @@ You will find some notes about optimization and what-not.
 
 Please, BEWARE of bad code!!!
 
-## Options:
+### Options
 
 You can pass some options to the compiler.
 
