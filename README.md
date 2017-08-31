@@ -11,7 +11,7 @@ The performance of it isn't great, but works fine **as far as I know**.
 
 1- You need to load a template code:
 
-	$template = new SimpleTemplate('{@if argv.0}Hello world!{@else}Boo!!!', $optimization);
+	$template = new SimpleTemplate('{@if argv.0}Hello world!{@else}Boo!!!', $options);
 	
 	//or
 	$template = new SimpleTemplate::fromFile($path);
@@ -47,6 +47,16 @@ Every command has the following structure: `{@<command> arguments}`.
 Each command has a different structure for the `arguments` bit.
 
 Anything outside those is considered output.
+
+#### Options:
+
+These are the options that are available and which values they expect:
+
+ - `optimize`: Accepts `true` or `false` (default: `true`).  
+    Will optimize some things, like inlining the results of the `for` loop or removing an increment by 0.
+ - `trim`: Accepts `true` or `false` (default: `true`).  
+     Defines if the language will trim whitespaces around the code or not.  
+     May cause problems with the output.
 
 #### Values and variables:
 
@@ -186,7 +196,7 @@ The variable `argv` will contain the arguments passed while `argc` will have the
  
     Structure: `fn <var>`
     
-    Creates a function with the name `<var>`. Using `{@/}` to limit the scope is **VERY HIGLY** recommended.
+    Creates a function with the name `<var>`. Using `{@/}` to limit the scope is **VERY HIGHLY** recommended.
     
     All the passed arguments are available inside `argv`.
     
