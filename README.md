@@ -14,7 +14,7 @@ The performance of it isn't great, but works fine **as far as I know**.
 	$template = new SimpleTemplate('{@if argv.0}Hello world!{@else}Boo!!!', $options);
 	
 	//or
-	$template = new SimpleTemplate::fromFile($path);
+	$template = new SimpleTemplate::fromFile($path, $options);
 
 2- Pass some data:
 
@@ -207,6 +207,15 @@ The variable `argv` will contain the arguments passed while `argc` will have the
     You can create functions inside array elements too like: `{@fn test.0}[...]{@/}`!  
     If the function `test.0` doesn't exist, the system will try `text_0`.  
     This allows you to write `{@call var.dump}` and it will run `var_dump()`.
+    
+ - `eval`
+ 
+    Structure: `eval <value>`
+    
+    Evaluates the passed value as valid SimpleTemplate code.
+    You can pass either a string or a variable with the code to evaluate.
+    All changes to variables will propagate to the main program.
+    
 
 More changes may come in the future, like expression (like `a + b / c % d . e`) parsing.
 
