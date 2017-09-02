@@ -583,6 +583,18 @@ PHP;
 {$tabs}	\$_ = &\${$var_name};
 
 PHP;
+				},
+				'eval' => function($data)use(&$replacement, &$brackets, &$tabs){
+					$value = self::parse_value($data, false);
+					$options = var_export($this->options, true);
+					
+					return <<<PHP
+{$tabs}call_user_func_array(function()use(&\$FN, &\$DATA){
+{$tabs}	\$compiler = new SimpleTemplate_Compiler(\$this, {$value}, {$options});
+{$tabs} \$fn = \$compiler->getFN();
+{$tabs} return \$fn(\$DATA);
+{$tabs}}, array());
+PHP;
 				}
 			);
 			
@@ -591,7 +603,7 @@ PHP;
 			$this->php .= "\r\necho {$trim_fn}(<<<'" . self::$var_name . "{$UUID}'\r\n"
 				. preg_replace_callback(
 					// http://stackoverflow.com/a/6464500
-					'~{@(echoj?l?|print|if|else|for|while|each|do|until|(?:un)?set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~',
+					'~{@(eval|echoj?l?|print|if|else|for|while|each|do|until|(?:un)?set|call|global|php|return|inc|fn|//?)(?:\\s*(.*?))?}(?=(?:[^"\\\\]*(?:\\\\.|"(?:[^"\\\\]*\\\\.)*[^"\\\\]*"))*[^"]*$)~',
 					function($matches)use(&$replacement, &$brackets, &$tabs, &$UUID, &$trim_fn){
 						
 						$tabs = $brackets
@@ -633,7 +645,7 @@ PHP;
 		function getFN(){
 			if(!$this->fn)
 			{
-				$this->fn = eval('return function($' . self::$var_name . '){'
+				$this->fn = eval('return function(&$' . self::$var_name . '){'
 						. PHP_EOL
 						. sprintf(self::$fn_body, $this->php)
 						. PHP_EOL
@@ -646,10 +658,10 @@ PHP;
 			return $this->fn;
 		}
 		
-		function __construct(SimpleTemplate $template, $str, array $options = array()){
+		function __construct(SimpleTemplate $template, $code, array $options = array()){
 		    $this->options = $options;
 		    $this->template = $template;
-			$this->compile($str);
+			$this->compile($code);
 		}
 	}
 
@@ -665,13 +677,18 @@ PHP;
 		
 		private $compiler = null;
 		
-		function __construct($str, array $options = array()){
+		function __construct($code, array $options = array()){
+			if(!$code)
+			{
+				throw new Exception('No code was provided');
+			}
+			
 			if($options)
 			{
 				$this->settings = array_merge($this->settings, $options);
 			}
 			
-			$this->compiler = new SimpleTemplate_Compiler($this, $str, $this->settings);
+			$this->compiler = new SimpleTemplate_Compiler($this, $code, $this->settings);
 		}
 		
 		function setData($key, $value){
@@ -713,12 +730,12 @@ PHP;
 			return $fn($this->data);
 		}
 		
-		static function fromFile($path){
-			return new self(file_get_contents($path));
+		static function fromFile($path, array $options = array()){
+			return new self(file_get_contents($path), $options);
 		}
 		
-		static function fromString($string){
-			return new self($string);
+		static function fromString($string, array $options = array()){
+			return new self($string, $options);
 		}
 		
 		static function version(){
