@@ -284,7 +284,7 @@ PHP;
 		}
 		
 		private static function parse_value($value, $safe = true){
-			if(preg_match('@^' . self::$regex['value'] . '$@', $value))
+						if(preg_match('@^' . self::$regex['value'] . '$@', $value))
 			{
 				return $value[0] === '"'
 					? str_replace('$', '\\$', $value)
@@ -657,7 +657,7 @@ PHP;
 						{
 							$return .= $tabs . '// {@eval} no cached code found: creating entry ';
 							
-							$compiler = new SimpleTemplate_Compiler($this->template, trim($value, '"'), $this->options);
+							$compiler = new SimpleTemplate_Compiler($this->template, stripslashes(trim($value, '"')), $this->options);
 							
 							$cached[$sha1] = self::format_code($compiler->getPHP() . '// {@eval} ended', $tabs);
 							
