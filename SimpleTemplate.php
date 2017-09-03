@@ -168,7 +168,7 @@
 	
 	// compiler class
 	class SimpleTemplate_Compiler {
-		private $UUID = null;
+		private $uuid = null;
 		
 		private static $var_name = 'DATA';
 		private static $default_var_name = '_';
@@ -285,9 +285,39 @@ PHP;
 			return strlen($value) && $value[0] !== '$' && $value[0] !== '(';
 		}
 		
+		private function format_code($code, $tabs, $skip_first = false, $skip_last = false){
+			$lines = preg_split("@(?:\r?\n|\r)+@", $code);
+			$heredoc_closing = self::$var_name . $this->uuid;
+			
+			$return = $skip_first ? array_shift($lines) : '';
+			$last = $skip_last ? PHP_EOL . array_pop($lines): '';
+			
+			foreach($lines as $line)
+			{
+				if($return)
+				{
+					$return .= PHP_EOL;
+				}
+				
+				if($line === $heredoc_closing)
+				{
+					$return .= $heredoc_closing;
+				}
+				else
+				{
+					$return .= (
+						preg_match('@^\s*\)+;?\s*$@', $line)
+							? substr($tabs, 1)
+							: $tabs
+					). ltrim($line);
+				}
+			}
+			
+			return $return . $last;
+		}
+		
 		private function compile($str){
-			// ALMOST unguessable name, to avoid syntax errors
-			$UUID = str_shuffle(mt_rand() . time() . sha1($str));
+			$UUID = $this->uuid;
 			
 			$brackets = 0;
 			$tabs = '';
@@ -384,18 +414,22 @@ PHP;
 							{
 								if($this->options['optimize'])
 								{
-									$return = "{$tabs}// ~ optimization enabled ~ inlining the results\r\n{$return}" . var_export(
-										range(
-											preg_replace('@^"|"$@', '', $values['start']),
-											preg_replace('@^"|"$@', '', $values['end']),
-											abs($values['step'])
+									$return = "{$tabs}// ~ optimization enabled ~ inlining the results\r\n{$return}" . self::format_code(
+										var_export(
+											range(
+												preg_replace('@^"|"$@', '', $values['start']),
+												preg_replace('@^"|"$@', '', $values['end']),
+												abs($values['step'])
+											),
+											true
 										),
+										$tabs . "\t",
 										true
 									);
 								}
 								else
 								{
-									$return = "{$tabs}// ~ optimization DISABLE ~ results could be inlined\r\n{$return}range({$values['start']}, {$values['end']}, abs({$values['step']}))";
+									$return = "{$tabs}// ~ optimization DISABLED ~ results could be inlined\r\n{$return}range({$values['start']}, {$values['end']}, abs({$values['step']}))";
 								}
 							}
 							else
@@ -585,16 +619,49 @@ PHP;
 PHP;
 				},
 				'eval' => function($data)use(&$replacement, &$brackets, &$tabs){
-					$value = self::parse_value($data, false);
-					$options = var_export($this->options, true);
+					$return = '';
+					$value = self::parse_value($data);
 					
-					return <<<PHP
+					if($this->options['optimize'] && self::is_value($value))
+					{
+						$return = $tabs . '// ~ optimization enabled ~ trying to avoid compiling in runtime' . PHP_EOL;
+						
+						static $cached = array();
+						
+						$sha1 = sha1($value);
+						
+						if(isset($cached[$sha1]))
+						{
+							$return .= $tabs . '// {@eval} cached code found: cache entry ';
+						}
+						else
+						{
+							$return .= $tabs . '// {@eval} no cached code found: creating entry ';
+							
+							$compiler = new SimpleTemplate_Compiler($this->template, trim($value, '"'), $this->options);
+							
+							$cached[$sha1] = self::format_code($compiler->getPHP() . '// {@eval} ended', $tabs);
+							
+							unset($compiler);
+						}
+						
+						$return .= $sha1 . PHP_EOL . $cached[$sha1];
+					}
+					else
+					{
+						$options = self::format_code(var_export($this->options, true), $tabs . "\t\t", true);
+						
+						$return = <<<PHP
+{$tabs}// ~ optimization DISABLED or unfeasable ~ compilation in runtime is required
 {$tabs}call_user_func_array(function()use(&\$FN, &\$DATA){
 {$tabs}	\$compiler = new SimpleTemplate_Compiler(\$this, {$value}, {$options});
-{$tabs} \$fn = \$compiler->getFN();
-{$tabs} return \$fn(\$DATA);
+{$tabs}	\$fn = \$compiler->getFN();
+{$tabs}	return \$fn(\$DATA);
 {$tabs}}, array());
 PHP;
+					}
+					
+					return $return;
 				}
 			);
 			
@@ -661,6 +728,10 @@ PHP;
 		function __construct(SimpleTemplate $template, $code, array $options = array()){
 		    $this->options = $options;
 		    $this->template = $template;
+			
+			// ALMOST unguessable name, to avoid syntax errors
+		    $this->uuid = str_shuffle(mt_rand() . time() . sha1($code));
+			
 			$this->compile($code);
 		}
 	}
