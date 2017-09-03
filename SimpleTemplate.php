@@ -1,5 +1,11 @@
 <?php
 
+	final class SimpleTemplate_SyntaxError extends \Exception {
+		function __construct($message) {
+			$this->message = 'SimpleTemplate - Syntax Error: ' . $message;
+		}
+	}
+
 	// contains all functions needed
 	final class SimpleTemplate_FN {
 		private static $fn = array();
@@ -278,7 +284,20 @@ PHP;
 		}
 		
 		private static function parse_value($value, $safe = true){
-			return preg_match('@^' . self::$regex['value'] . '$@', $value) ? $value : self::render_var($value, $safe);
+			if(preg_match('@^' . self::$regex['value'] . '$@', $value))
+			{
+				return $value[0] === '"'
+					? str_replace('$', '\\$', $value)
+					: $value;
+			}
+			else if(preg_match('@^' . self::$regex['var'] . '$@', $value))
+			{
+				return self::render_var($value, $safe);
+			}
+			else
+			{
+				throw new SimpleTemplate_SyntaxError('Invalid value syntax: ' . $value);
+			}
 		}
 		
 		private static function is_value($value){
@@ -680,7 +699,6 @@ PHP;
 						$var_name = self::$var_name;
 						
 						$php = $replacement[$matches[1]](isset($matches[2]) ? $matches[2] : null);
-						
 						
 						return "\r\n{$var_name}{$UUID}\r\n);\r\n{$tabs}// {$matches[0]}\r\n{$php}\r\n\r\n{$tabs}echo {$trim_fn}(<<<'{$var_name}{$UUID}'\r\n";
 					},
