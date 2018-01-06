@@ -382,18 +382,18 @@ PHP;
 				'if' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
 					
-					return $tabs . 'if(' . self::parse_boolean($data) . '){';
+					return $tabs . 'if(' . self::parse_boolean($data) . ') {';
 				},
 				'else' => function($data)use(&$replacement, &$brackets, &$tabs){
 					preg_match('@(?<if>if)(?<data>.*)@', $data, $bits);
 					
-					$return = substr($tabs, 1) . '}else';
+					$return = substr($tabs, 1) . '} else';
 					
-					if($bits['if'])
+					if(isset($bits['if']) && isset($bits['data']))
 					{
 						--$brackets;
 					
-						$return .= $replacement['if']($bits['data']);
+						$return .= ltrim($replacement['if'](trim($bits['data'])));
 					}
 					else
 					{
@@ -407,7 +407,38 @@ PHP;
 					
 					preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?:as\s*(?<as>' . self::$regex['var'] . ')(?:\s*key\s*(?<key>' . self::$regex['var'] . ')\s*)?)?$@', $data, $bits);
 					
-					return $tabs . 'foreach((array)' . self::render_var($bits['var']) . ' as ' . (isset($bits['key']) ? self::render_var($bits['key'], false) . ' => ': '') . self::render_var(isset($bits['as']) ? $bits['as'] : '', false) . '){';
+					static $count = 0;
+					
+					$var_name = self::$var_name;
+					$tmp_name = 'tmp_' . (++$count) . '_';
+					
+					$vars_var = self::render_var($bits['var'], false);
+					$vars_as = self::render_var(isset($bits['as']) ? $bits['as'] : '', false);
+					$vars_key = self::render_var(isset($bits['key']) ? $bits['as'] : '__', false);
+					
+					return <<<PHP
+{$tabs}// loop variables
+{$tabs}\${$tmp_name}val = isset({$vars_var}) ? \${$tmp_name}val = &{$vars_var} : null;
+{$tabs}\${$tmp_name}keys = gettype({$vars_var}) == 'array'
+{$tabs}	? array_keys({$vars_var})
+{$tabs}	: array_keys(range(0, strlen(\${$tmp_name}val = \${$tmp_name}val . '') - 1));
+{$tabs}\${$tmp_name}key_last = end(\${$tmp_name}keys);
+{$tabs}
+{$tabs}// loop
+{$tabs}foreach(\${$tmp_name}keys as \${$tmp_name}index => \${$tmp_name}key){
+{$tabs}	\${$var_name}['loop'] = array(
+{$tabs}		'index' => \${$tmp_name}index,
+{$tabs}		'i' => \${$tmp_name}index,
+{$tabs}		'key' => \${$tmp_name}key,
+{$tabs}		'k' => \${$tmp_name}key,
+{$tabs}		'value' => \${$tmp_name}val[\${$tmp_name}key],
+{$tabs}		'v' => \${$tmp_name}val[\${$tmp_name}key],
+{$tabs}		'first' => \${$tmp_name}key === \${$tmp_name}keys[0],
+{$tabs}		'last' => \${$tmp_name}key === \${$tmp_name}key_last,
+{$tabs}	);
+{$tabs}	{$vars_key} = \${$tmp_name}key;
+{$tabs}	{$vars_as} = \${$tmp_name}val[\${$tmp_name}key];
+PHP;
 				},
 				'while' => function($data)use(&$replacement, &$brackets, &$tabs){
 					++$brackets;
