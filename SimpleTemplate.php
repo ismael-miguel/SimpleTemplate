@@ -650,12 +650,22 @@ PHP;
 					
 				},
 				'fn' => function($data)use(&$replacement, &$brackets, &$tabs){
+					if(
+						!preg_match(
+							'@^\s*(' . self::$regex['var'] . ')\s*(?:\s+(.*))$@',
+							$data, $bits
+						)
+					)
+					{
+						return '';
+					}
+					
 					++$brackets;
 					
 					$version = SimpleTemplate::version();
 					$var_name = self::$var_name;
 					
-					return $tabs . self::render_var($data, false) . <<<PHP
+					$return = $tabs . self::render_var($bits[1], false) . <<<PHP
  = function()use(&\$FN, &\$_){
 {$tabs}	\${$var_name} = array(
 {$tabs}		'argv' => func_get_args(),
@@ -667,6 +677,24 @@ PHP;
 {$tabs}	\$_ = &\${$var_name};
 
 PHP;
+					if(isset($bits[2]) && $bits[2])
+					{
+						$args = array();
+						foreach(self::split_values($bits[2]) as $value)
+						{
+							if(!self::is_value(self::parse_value($value)))
+							{
+								$args[] = $value;
+							}
+						}
+						
+						foreach($args as $k => $arg)
+						{
+							$return .= "{$tabs}	\${$var_name}[\"{$arg}\"] = &\${$var_name}[\"argv\"][{$k}];" . PHP_EOL;
+						}
+					}
+					
+					return $return;
 				},
 				'eval' => function($data)use(&$replacement, &$brackets, &$tabs){
 					$return = '';
