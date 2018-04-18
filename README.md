@@ -196,13 +196,15 @@ The variable `argv` will contain the arguments passed while `argc` will have the
 
  - `fn`
  
-    Structure: `fn <var>`
+    Structure: `fn <var>[ <var>[, <vars>]]`
     
     Creates a function with the name `<var>`. Using `{@/}` to limit the scope is **VERY HIGHLY** recommended.
     
     All the passed arguments are available inside `argv`.
     
     For example: `{@fn show}{@echo argv}{@/}{@call show 1, 2, 4, 8}`
+    
+    You also can pass a list of variables that automatically will receive the values of the arguments. Repeated variables will be overwritten and only the last value will be stored.
     
     You can create functions inside array elements too like: `{@fn test.0}[...]{@/}`!  
     If the function `test.0` doesn't exist, the system will try `text_0`.  
