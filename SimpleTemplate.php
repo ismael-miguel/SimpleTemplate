@@ -284,7 +284,11 @@ PHP;
 		}
 		
 		private static function parse_value($value, $safe = true){
-						if(preg_match('@^' . self::$regex['value'] . '$@', $value))
+			if($value === '' || $value === '""')
+			{
+				return $value;
+			}
+			else if(preg_match('@^' . self::$regex['value'] . '$@', $value))
 			{
 				return $value[0] === '"'
 					? str_replace('$', '\\$', $value)
@@ -651,10 +655,10 @@ PHP;
 				},
 				'fn' => function($data)use(&$replacement, &$brackets, &$tabs){
 					if(
-						!preg_match(
-							'@^\s*(' . self::$regex['var'] . ')\s*(?:\s+(.*))$@',
+						preg_match(
+							'@^\s*(' . self::$regex['var'] . ')\s*(?:\s+(.*))?$@',
 							$data, $bits
-						)
+						) === false
 					)
 					{
 						return '';
@@ -803,11 +807,11 @@ PHP;
 		}
 		
 		function __construct(SimpleTemplate $template, $code, array $options = array()){
-		    $this->options = $options;
-		    $this->template = $template;
+			$this->options = $options;
+			$this->template = $template;
 			
 			// ALMOST unguessable name, to avoid syntax errors
-		    $this->uuid = str_shuffle(mt_rand() . time() . sha1($code));
+			$this->uuid = str_shuffle(mt_rand() . time() . sha1($code));
 			
 			$this->compile($code);
 		}
