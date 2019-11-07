@@ -63,11 +63,14 @@ Anything outside those is considered output.
 #### Values and variables:
 
 A variable is any alphanumeric string that doesn't have a special meaning. Arrays' items can be accessed by writting the key after a period `like.this.example.here`.  
+Since 0.72, you also can use a variable to fetch the values in array `like.[this]`, where the `like` is an array and `this` is a variable.  
 Adding `U <name>` or `unsafe <name>` allows the use of variables without protection against undefined indexes.
 
-A value is everything else, like numbers, `"strings"`, `true` and `false`. Strings **must** be with double-quotes.
+A value is everything else, like numbers, `"strings"`, `true` and `false`. Strings **must** be with double-quotes.  
+Since 0.72, you can use string interpolation, to present values directly. The syntax is `"#{value}"`, where `value` is a variable.
 
-The variable `argv` will contain the arguments passed while `argc` will have the number of arguments.
+The variable `argv` will contain the arguments passed while `argc` will have the number of arguments.  
+The variable `loop` will contain everything about the current iteration of a loop.
 
 ### The commands:
 
