@@ -184,7 +184,7 @@ class SimpleTemplate_Compiler {
 		'var_name' => '(?:[_a-zA-Z]\w*)',
 		'var_simple' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)',
 		'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false|null)',
-		'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)'
+		'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*))'
 	);
 	
 	private $options = array();
@@ -256,7 +256,7 @@ PHP;
 	private static function parse_boolean($data){
 		if(
 			!preg_match(
-				'@(' . self::$regex['var_value'] . ')\s*(?:(isset|is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)|matches))?|has(?:\s*not)?)\s*(' . self::$regex['var_value'] . ')?)?@',
+				'@(' . self::$regex['var_value'] . ')\s*(?:(isset|is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)|matches))?|has(?:\s*not)?|(?:not\s*)?matches)\s*(' . self::$regex['var_value'] . ')?)?@',
 				$data, $bits
 			)
 		)
@@ -287,6 +287,9 @@ PHP;
 			},
 			'isset' => function($data, $var1){
 				return ($data === 'not' ? '!': '') . 'isset(' . self::render_var($var1, false) . ')';
+			},
+			'matches' => function($data, $var1, $var2){
+				return ($data === 'not' ? '!': '') . 'preg_match(' . self::parse_value($var2) . ', ' . self::parse_value($var1) . ')';
 			}
 		);
 		
