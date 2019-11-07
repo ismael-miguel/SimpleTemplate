@@ -131,6 +131,8 @@ The variable `loop` will contain everything about the current iteration of a loo
      `if <val> has` -> Sees if a particular key exists on `<val>`
 	 
      `if <val> is ...` -> Performs a single boolean operation on `<val>`.
+	 
+     `if <val> matches ...` -> Checks if `<val>` matches with the regular expression (using `preg_match()`).
      
  - `else`
  
