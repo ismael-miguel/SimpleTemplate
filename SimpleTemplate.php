@@ -256,7 +256,7 @@ PHP;
 	private static function parse_boolean($data){
 		if(
 			!preg_match(
-				'@(' . self::$regex['var_value'] . ')\s*(?:(isset|is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)|matches))?|has(?:\s*not)?|(?:not\s*)?matches)\s*(' . self::$regex['var_value'] . ')?)?@',
+				'@(' . self::$regex['var_value'] . ')\s*(?:(isset|is(?:(?:\s*not|n\'?t)?\s*(?:(?:greater|lower)(?:\s*than)?|equal(?:\s*to)?|equal|a|(?:(?:instance|multiple|mod)(?:\s*of)?)|matches))?|has(?:\s*not)?|(?:not\s*)?matches)\s*(' . self::$regex['var_value'] . ')?)?(?:\s*(.+))?@',
 				$data, $bits
 			)
 		)
@@ -288,8 +288,15 @@ PHP;
 			'isset' => function($data, $var1){
 				return ($data === 'not' ? '!': '') . 'isset(' . self::render_var($var1, false) . ')';
 			},
-			'matches' => function($data, $var1, $var2){
-				return ($data === 'not' ? '!': '') . 'preg_match(' . self::parse_value($var2) . ', ' . self::parse_value($var1) . ')';
+			'matches' => function($data, $var1, $var2, $extra){
+				if($extra && self::is_var($extra = self::parse_value($extra, false)))
+				{
+					return ($data === 'not' ? '!': '') . 'preg_match(' . self::parse_value($var2) . ', ' . self::parse_value($var1) . ', ' . $extra . ')';
+				}
+				else
+				{
+					return ($data === 'not' ? '!': '') . 'preg_match(' . self::parse_value($var2) . ', ' . self::parse_value($var1) . ')';
+				}
 			}
 		);
 		
@@ -297,7 +304,12 @@ PHP;
 		{
 			$ops = explode(' ', $bits[2], 2);
 			
-			return $fn[$ops[0]](isset($ops[1]) ? $ops[1]: '', $bits[1], isset($bits[3]) ? $bits[3] : self::$default_var_name);
+			return $fn[$ops[0]](
+				isset($ops[1]) ? $ops[1]: '',
+				$bits[1],
+				isset($bits[3]) ? $bits[3] : self::$default_var_name,
+				isset($bits[4]) ? $bits[4] : ''
+			);
 		}
 		else
 		{
@@ -343,6 +355,14 @@ PHP;
 			&& (
 				$value[0] !== '"'
 				|| strpos($value, '{$' . self::$var_name) === false
+			);
+	}
+	
+	private static function is_var($value){
+		return strlen($value)
+			&& (
+				$value[0] === '$'
+				|| $value[0] === '('
 			);
 	}
 	
@@ -857,7 +877,7 @@ PHP;
 
 // base class
 class SimpleTemplate {
-	private static $version = '0.72';
+	private static $version = '0.73';
 	
 	private $data = array();
 	private $settings = array(
