@@ -63,7 +63,7 @@ Anything outside those is considered output.
 #### Values and variables:
 
 A variable is any alphanumeric string that doesn't have a special meaning. Arrays' items can be accessed by writting the key after a period `like.this.example.here`.  
-Since 0.72, you also can use a variable to fetch the values in array `like.[this]`, where the `like` is an array and `this` is a variable.  
+Since 0.72, you also can use a variable to fetch the values in array `like.[this]`, where the `like` is an array and `this` is a variable (you can't use values like strings and numbers).  
 Adding `U <name>` or `unsafe <name>` allows the use of variables without protection against undefined indexes.
 
 A value is everything else, like numbers, `"strings"`, `true` and `false`. Strings **must** be with double-quotes.  
@@ -132,7 +132,7 @@ The variable `loop` will contain everything about the current iteration of a loo
 	 
      `if <val> is ...` -> Performs a single boolean operation on `<val>`.
 	 
-     `if <val> matches ...` -> Checks if `<val>` matches with the regular expression (using `preg_match()`).
+     `if <val> matches <value> [<var>]` (added in 0.73) -> Checks if `<val>` matches with the regular expression (using `preg_match()`). If the `<var>` is supplied, it will have the matches in it.
      
  - `else`
  
