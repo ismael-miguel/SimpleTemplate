@@ -197,8 +197,6 @@ The variable `loop` will contain everything about the current iteration of a loo
      Simply runs the `<snippet>` directly.
      
      You can use the variable `$DATA` to access everything you need.
-     
-     Some functions are available inside `$FN`. They don't do anything too great, but they are **VERY** important and shouldn't be changed.
 
  - `fn`
  
