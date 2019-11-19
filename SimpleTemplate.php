@@ -180,11 +180,11 @@ class SimpleTemplate_Compiler {
 	private static $default_var_name = '_';
 	
 	private static $regex = array(
-		'var' => '(?:(?:(?:U|unsafe|R|reference)\:)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*)',
+		'var' => '(?:(?:(?:U|unsafe|R|ref|reference)\:)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*)',
 		'var_name' => '(?:[_a-zA-Z]\w*)',
-		'var_simple' => '(?:(?:(?:U|unsafe|R|reference)\:)?[_a-zA-Z]\w*(?:\.\w*)*)',
+		'var_simple' => '(?:(?:(?:U|unsafe|R|ref|reference)\:)?[_a-zA-Z]\w*(?:\.\w*)*)',
 		'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false|null)',
-		'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:(?:U|unsafe|R|reference)\:)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*))'
+		'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:(?:U|unsafe|R|ref|reference)\:)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*))'
 	);
 	
 	private $options = array();
@@ -213,7 +213,7 @@ PHP;
 	
 	private static function render_var($name = null, $safe = true, $allow_ref = false){
 		// preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
-		preg_match('@^\s*(?:(?<unsafe>U|unsafe)|(?<ref>R|reference)\:)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
+		preg_match('@^\s*(?:(?:(?<unsafe>U|unsafe)|(?<ref>R|ref|reference))\:)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
 		
 		if(strpos($bits['var'], '['))
 		{
