@@ -6,169 +6,184 @@ final class SimpleTemplate_SyntaxError extends \Exception {
 	}
 }
 
+final class SimpleTemplate_FN_Invalid extends \Exception {
+	function __construct($message) {
+		$this->message = 'SimpleTemplate_FN - Invalid function: ' . $message;
+	}
+}
+
 // contains all functions needed
 final class SimpleTemplate_FN {
-	private static $fn = array();
-	private static $init = false;
-	
-	private static function init(){
-		self::$init = true;
-		
-		self::$fn = array(
-			// array_flat -> http://stackoverflow.com/a/1320156
-			'array_flat' => function(){
-				$return = array();
-				$array = func_get_args();
-				array_walk_recursive($array, function($value)use(&$return){
-					$return[] = $value;
-				});
-				return $return;
-			},
-			'inc' => function($_, $by = 1){
-				// if there's no increment value
-				if(!$by)
-				{
-					return $_;
-				}
-				
-				// if there's no value
-				if(!$_)
-				{
-					return $by;
-				}
-				
-				$fn = function($_, $by){
-					switch(gettype($_))
-					{
-						case 'NULL':
-						case 'null':
-							return $by;
-						case 'integer':
-						case 'double':
-						case 'float':
-							return $_ + $by;
-						case 'string':
-							if($_ === '')
-							{
-								return '';
-							}
-							
-							$_by = abs($by);
-							
-							for($i = 0; $i < $_by; $i++)
-							{
-								if($by > 0)
-								{
-									++$_;
-								}
-								else
-								{
-									$last = strlen($_) - 1;
-									
-									if($_[$last] === 'a' || $_[$last] === 'A')
-									{
-										// handles aaaa -> zzz
-										$_ = preg_replace_callback('@[aA]+$@', function($str){
-											return str_repeat($str[0][0] === 'a' ? 'z': 'Z', strlen($str[0]) - 1);
-										}, $_);
-									}
-									else
-									{
-										$_[$last] = chr(ord($_[$last]) - 1);
-									}
-								}
-							}
-							
-							return $_;
-						default:
-							return $by;
-					}
-				};
-
-				
-				if(gettype($_) === 'array')
-				{
-					array_walk_recursive($_, function(&$value)use(&$fn, &$by){
-						$value = $fn($value, $by);
-					});
-				}
-				else
-				{
-					$_ = $fn($_, $by);
-				}
-				
-				return $_;
-			},
-			'len' => function($args){
-				$result = array();
-				
-				if(func_num_args() > 1)
-				{
-					$args = func_get_args();
-				}
-				else
-				{
-					$args = array($args);
-				}
-				
-				foreach($args as $arg)
-				{
-					switch(gettype($arg))
-					{
-						case 'array':
-							$result[] = count($arg);
-							break;
-						case 'string':
-							$result[] = strlen($arg);
-							break;
-						case 'integer':
-						case 'double':
-						case 'float':
-							$result[] = 0;
-							break;
-						default:
-							$result[] = null;
-					}
-				}
-				
-				return $result;
-			},
-			'repeat' => function($_, $times = 1){
-				if($times < 1)
-				{
-					return '';
-				}
-				
-				array_walk_recursive($_, function(&$value)use(&$times){
-					$value = str_repeat($value, $times);
-				});
-				
-				return $_;
-			}
-		);
+	private static function fn_array_flat(){
+		$return = array();
+		$array = func_get_args();
+		array_walk_recursive($array, function($value)use(&$return){
+			$return[] = $value;
+		});
+		return $return;
 	}
 	
-	static function call($fn, $args = array()){
-		if(!self::$init)
+	private static function fn_inc($_, $by = 1){
+		// if there's no increment value
+		if(!$by)
 		{
-			self::init();
+			return $_;
 		}
 		
-		if(!self::$fn[$fn])
+		// if there's no value
+		if(!$_)
 		{
-			throw new Exception('Invalid function ' . $fn);
+			return $by;
 		}
 		
-		return call_user_func_array(self::$fn[$fn], $args);
+		$fn = function($_, $by){
+			switch(gettype($_))
+			{
+				case 'NULL':
+				case 'null':
+					return $by;
+				case 'integer':
+				case 'double':
+				case 'float':
+					return $_ + $by;
+				case 'string':
+					if($_ === '')
+					{
+						return '';
+					}
+					
+					$_by = abs($by);
+					
+					for($i = 0; $i < $_by; $i++)
+					{
+						if($by > 0)
+						{
+							++$_;
+						}
+						else
+						{
+							$last = strlen($_) - 1;
+							
+							if($_[$last] === 'a' || $_[$last] === 'A')
+							{
+								// handles aaaa -> zzz
+								$_ = preg_replace_callback('@[aA]+$@', function($str){
+									return str_repeat($str[0][0] === 'a' ? 'z': 'Z', strlen($str[0]) - 1);
+								}, $_);
+							}
+							else
+							{
+								$_[$last] = chr(ord($_[$last]) - 1);
+							}
+						}
+					}
+					
+					return $_;
+				default:
+					return $by;
+			}
+		};
+
+		
+		if(gettype($_) === 'array')
+		{
+			array_walk_recursive($_, function(&$value)use(&$fn, &$by){
+				$value = $fn($value, $by);
+			});
+		}
+		else
+		{
+			$_ = $fn($_, $by);
+		}
+		
+		return $_;
+	}
+	
+	private static function fn_len($args){
+		$result = array();
+		
+		if(func_num_args() > 1)
+		{
+			$args = func_get_args();
+		}
+		else
+		{
+			$args = array($args);
+		}
+		
+		foreach($args as $arg)
+		{
+			switch(gettype($arg))
+			{
+				case 'array':
+					$result[] = count($arg);
+					break;
+				case 'string':
+					$result[] = strlen($arg);
+					break;
+				case 'integer':
+				case 'double':
+				case 'float':
+					$result[] = 0;
+					break;
+				default:
+					$result[] = null;
+			}
+		}
+		
+		return $result;
+	}
+	
+	private static function fn_repeat($_, $times = 1){
+		if($times < 1)
+		{
+			return '';
+		}
+		
+		array_walk_recursive($_, function(&$value)use(&$times){
+			$value = str_repeat($value, $times);
+		});
+		
+		return $_;
+	}
+	
+	// *******************************************************************************
+	
+	static function call(){
+		$args = func_get_args();
+		$fn = array_shift($args);
+		
+		if(!self::method_exists($fn))
+		{
+			throw new SimpleTemplate_FN_Invalid($fn);
+		}
+		
+		return call_user_func_array(array(__CLASS__, 'fn_' . $fn), $args);
 	}
 	
 	static function name_list(){
-		if(!self::$init)
+		static $list = array();
+		
+		if(!$list)
 		{
-			self::init();
+			foreach(get_class_methods(__CLASS__) as $method)
+			{
+				if(strpos($method, 'fn_') === 0)
+				{
+					$list[] = preg_replace('@^fn_@', '', $method);
+				}
+			}
 		}
 		
-		return array_keys(self::$fn);
+		return $list;
+	}
+	
+	static function method_exists($method){
+		static $exist = array();
+		
+		return isset($exist[$method])
+			? $exist[$method]
+			: $exist[$method] = method_exists(__CLASS__, 'fn_' . $method);
 	}
 }
 
@@ -191,24 +206,6 @@ class SimpleTemplate_Compiler {
 	private $template = null;
 	
 	private $fn = null;
-	private static $fn_body = <<<'PHP'
-// - FUNCTION BOILERPLATE
-$FN = array();
-
-array_map(function($name)use(&$FN){
-	$FN[$name] = function()use($name){
-		return SimpleTemplate_FN::call($name, func_get_args());
-	};
-},
-SimpleTemplate_FN::name_list()
-);
-// - END FUNCTION BOILERPLATE -
-
-// - CODE
-%s
-// - END CODE -
-PHP;
-	
 	private $php = '';
 	
 	private static function render_var($name = null, $safe = true, $allow_ref = false){
@@ -433,7 +430,7 @@ PHP;
 				
 				$separator = $bits['separator'] ? self::parse_value($bits['separator']): '\'\'';
 				
-				return $tabs . 'echo implode(' . $separator . ', $FN[\'array_flat\'](' . implode(', ', self::parse_values($bits['data'])) . '));';
+				return $tabs . 'echo implode(' . $separator . ', SimpleTemplate_FN::call(\'array_flat\', ' . implode(', ', self::parse_values($bits['data'])) . '));';
 			},
 			'echol' => function($data)use(&$replacement, &$brackets, &$tabs){
 				return $replacement['echo']($data) . 'echo PHP_EOL;';
@@ -595,16 +592,16 @@ call_user_func_array(function(){
 {$tabs}	return array_reduce(\$args, function(\$carry, \$value){
 {$tabs}		return \$carry - \$value;
 {$tabs}	}, \$initial);
-{$tabs}}, \$FN['array_flat'](
+{$tabs}}, SimpleTemplate_FN::call('array_flat', 
 PHP;
 							$close = 2;
 							break;
 						case '+':
-							$return .= 'array_sum($FN[\'array_flat\'](';
+							$return .= 'array_sum(SimpleTemplate_FN::call(\'array_flat\', ';
 							$close = 2;
 							break;
 						case '*':
-							$return .= 'array_product($FN[\'array_flat\'](';
+							$return .= 'array_product(SimpleTemplate_FN::call(\'array_flat\', ';
 							$close = 2;
 							break;
 						case '\\':
@@ -623,7 +620,7 @@ PHP;
 										? self::parse_value($bits['op_val'])
 										: self::render_var($bits['var'], false)
 								)
-								. ';}, $FN[\'array_flat\'](';
+								. ';}, SimpleTemplate_FN::call(\'array_flat\', ';
 							$close = 2;
 							break;
 					}
@@ -676,8 +673,8 @@ PHP;
 {$tabs}{$into}call_user_func_array(
 {$tabs}	(isset({$var}) && is_callable({$var})
 {$tabs}		? {$var}
-{$tabs}		: (isset(\$FN['{$bits['fn']}'])
-{$tabs}			? \$FN['{$bits['fn']}']
+{$tabs}		: (SimpleTemplate_FN::method_exists('{$bits['fn']}')
+{$tabs}			? SimpleTemplate_FN::call('{$bits['fn']}')
 {$tabs}			: '{$alt_name}'
 {$tabs}		)
 {$tabs}	),
@@ -686,9 +683,9 @@ PHP;
 PHP;
 			},
 			'php' => function($data)use(&$replacement, &$brackets, &$tabs){
-				return $tabs . 'call_user_func_array(function($FN, &$' . self::$var_name . '){' . PHP_EOL
+				return $tabs . 'call_user_func_array(function(&$' . self::$var_name . '){' . PHP_EOL
 					   . "{$tabs}\t{$data};" . PHP_EOL
-					   . $tabs . '}, array($FN, &$' . self::$var_name . '));';
+					   . $tabs . '}, array(&$' . self::$var_name . '));';
 			},
 			'return' => function($data)use(&$replacement, &$brackets, &$tabs){
 				return $tabs . 'return ' . ($data ? self::parse_value($data): '').';';
@@ -721,7 +718,7 @@ PHP;
 						continue;
 					}
 					
-					$return .= "{$tabs}{$value} = \$FN['inc'](isset({$value})?{$value}:0, {$inc});" . PHP_EOL;
+					$return .= "{$tabs}{$value} = SimpleTemplate_FN::call('inc', isset({$value})?{$value}:0, {$inc});" . PHP_EOL;
 				}
 				
 				return $return;
@@ -744,7 +741,7 @@ PHP;
 				$var_name = self::$var_name;
 				
 				$return = $tabs . self::render_var($bits ? $bits[1] : null, false) . <<<PHP
-= function()use(&\$FN, &\$_){
+= function()use(&\$_){
 {$tabs}	\${$var_name} = array(
 {$tabs}		'argv' => func_get_args(),
 {$tabs}		'argc' => func_num_args(),
@@ -809,7 +806,7 @@ PHP;
 					
 					$return = <<<PHP
 {$tabs}// ~ optimization DISABLED or unfeasable ~ compilation in runtime is required
-{$tabs}call_user_func_array(function()use(&\$FN, &\$DATA){
+{$tabs}call_user_func_array(function()use(&\$DATA){
 {$tabs}	\$compiler = new SimpleTemplate_Compiler(\$this, {$value}, {$options});
 {$tabs}	\$fn = \$compiler->getFN();
 {$tabs}	return \$fn(\$DATA);
@@ -868,9 +865,7 @@ PHP;
 		if(!$this->fn)
 		{
 			$this->fn = eval('return function(&$' . self::$var_name . '){'
-					. PHP_EOL
-					. sprintf(self::$fn_body, $this->php)
-					. PHP_EOL
+					. PHP_EOL . $this->php . PHP_EOL
 				. '};'
 			);
 			
@@ -893,7 +888,7 @@ PHP;
 
 // base class
 class SimpleTemplate {
-	private static $version = '0.80';
+	private static $version = '0.81';
 	
 	private $data = array();
 	private $settings = array(
