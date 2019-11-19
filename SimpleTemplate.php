@@ -180,11 +180,11 @@ class SimpleTemplate_Compiler {
 	private static $default_var_name = '_';
 	
 	private static $regex = array(
-		'var' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*)',
+		'var' => '(?:(?:(?:U|unsafe|R|reference)\:)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*)',
 		'var_name' => '(?:[_a-zA-Z]\w*)',
-		'var_simple' => '(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.\w*)*)',
+		'var_simple' => '(?:(?:(?:U|unsafe|R|reference)\:)?[_a-zA-Z]\w*(?:\.\w*)*)',
 		'value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?\d*(?:\.\d*)?|true|false|null)',
-		'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:(?:U|unsafe)\s+)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*))'
+		'var_value' => '(?:(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")|[\-+]?[\d\W]\d*(?:\.\d*)?|true|false|null|(?:(?:(?:U|unsafe|R|reference)\:)?[_a-zA-Z]\w*(?:\.(?:\[[_a-zA-Z]\w*(?:\.\w*)*\]|\w*))*))'
 	);
 	
 	private $options = array();
@@ -211,8 +211,9 @@ PHP;
 	
 	private $php = '';
 	
-	private static function render_var($name = null, $safe = true){
-		preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
+	private static function render_var($name = null, $safe = true, $allow_ref = false){
+		// preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
+		preg_match('@^\s*(?:(?<unsafe>U|unsafe)|(?<ref>R|reference)\:)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
 		
 		if(strpos($bits['var'], '['))
 		{
@@ -233,7 +234,13 @@ PHP;
 			$var = '$' . self::$var_name . ($bits['var'] ? '[\'' . implode('\'][\'', explode('.', $bits['var'])) . '\']' : '');
 		}
 		
-		return $safe && !$bits['unsafe'] ? '(isset(' . $var . ')?' . $var . ':null)' : $var;
+		return $allow_ref && isset($bits['ref']) && $bits['ref']
+			? '&' . $var
+			: (
+				$safe && !$bits['unsafe']
+					? '(isset(' . $var . ')?' . $var . ':null)'
+					: $var
+			);
 	}
 	
 	private static function split_values($values, $delimiter = '\s*,\s*'){
@@ -242,12 +249,12 @@ PHP;
 		return preg_split('@(' . ($delimiter ?: '\s*,\s*') . ')(?=(?:[^"]|"[^"\\\\]*(?:\\\\.[^"\\\\]*)*")*$)@', $values);
 	}
 	
-	private static function parse_values($values, $delimiter = '\s*,\s*', $safe = true){
+	private static function parse_values($values, $delimiter = '\s*,\s*', $safe = true, $allow_ref = true){
 		$value_bits = self::split_values($values, $delimiter);
 		
 		foreach($value_bits as $k => $value)
 		{
-			$value_bits[$k] = self::parse_value($value, $safe);
+			$value_bits[$k] = self::parse_value($value, $safe, $allow_ref);
 		}
 		
 		return $value_bits;
@@ -317,7 +324,7 @@ PHP;
 		}
 	}
 	
-	private static function parse_value($value, $safe = true){
+	private static function parse_value($value, $safe = true, $allow_ref = false){
 		if($value === '' || $value === '""')
 		{
 			return $value;
@@ -330,7 +337,7 @@ PHP;
 		}
 		else if(preg_match('@^' . self::$regex['var'] . '$@', $value))
 		{
-			return self::render_var($value, $safe);
+			return self::render_var($value, $safe, $allow_ref);
 		}
 		else
 		{
@@ -352,10 +359,11 @@ PHP;
 		return strlen($value)
 			&& $value[0] !== '$'
 			&& $value[0] !== '('
-			&& (
+			&& $value[0] !== '&'
+			/*&& (
 				$value[0] !== '"'
 				|| strpos($value, '{$' . self::$var_name) === false
-			);
+			)*/;
 	}
 	
 	private static function is_var($value){
@@ -363,6 +371,7 @@ PHP;
 			&& (
 				$value[0] === '$'
 				|| $value[0] === '('
+				|| $value[0] === '&'
 			);
 	}
 	
@@ -420,7 +429,7 @@ PHP;
 				return '';
 			},
 			'echo' => function($data)use(&$replacement, &$brackets, &$tabs){
-				preg_match('@^(?:separator\s+(?<separator>' . self::$regex['var_value'] . ')\s+)?(?<data>.*)$@', $data, $bits);
+				preg_match('@^(?:separator\s+(?<separator>' . self::$regex['var_value'] . ')\s*)?(?<data>.*)$@', $data, $bits);
 				
 				$separator = $bits['separator'] ? self::parse_value($bits['separator']): '\'\'';
 				
@@ -659,15 +668,22 @@ PHP;
 				
 				$var = self::render_var($bits['fn'], false);
 				
-				return $tabs . ($bits['into'] ? self::render_var($bits['into'], false) . ' = ' : '')
-					. 'call_user_func_array('
-						. 'isset(' . $var . ') && is_callable(' . $var . ')'
-							. '? ' . $var
-							. ': (isset($FN["' . $bits['fn'] . '"])'
-								. '? $FN["' . $bits['fn'] . '"]'
-								.': "' . str_replace('.', '_', $bits['fn']) . '"'
-							. '), '
-						. 'array(' . implode(',', self::parse_values($bits['args'])) . '));';
+				$into = $bits['into'] ? self::render_var($bits['into'], false) . ' = ' : '';
+				$args = implode(', ', self::parse_values($bits['args']));
+				$alt_name = str_replace('.', '_', $bits['fn']);
+				
+				return <<<PHP
+{$tabs}{$into}call_user_func_array(
+{$tabs}	(isset({$var}) && is_callable({$var})
+{$tabs}		? {$var}
+{$tabs}		: (isset(\$FN['{$bits['fn']}'])
+{$tabs}			? \$FN['{$bits['fn']}']
+{$tabs}			: '{$alt_name}'
+{$tabs}		)
+{$tabs}	),
+{$tabs}	array({$args})
+{$tabs});
+PHP;
 			},
 			'php' => function($data)use(&$replacement, &$brackets, &$tabs){
 				return $tabs . 'call_user_func_array(function($FN, &$' . self::$var_name . '){' . PHP_EOL
@@ -877,7 +893,7 @@ PHP;
 
 // base class
 class SimpleTemplate {
-	private static $version = '0.73';
+	private static $version = '0.80';
 	
 	private $data = array();
 	private $settings = array(
