@@ -183,7 +183,11 @@ final class SimpleTemplate_FN {
 		
 		return isset($exist[$method])
 			? $exist[$method]
-			: $exist[$method] = method_exists(__CLASS__, 'fn_' . $method);
+			: (
+				is_null($exist[$method] = @method_exists(__CLASS__, 'fn_' . $method))
+					? in_array($method, self::name_list())
+					: $exist[$method]
+			);
 	}
 }
 
