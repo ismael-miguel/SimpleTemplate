@@ -1,0 +1,81 @@
+{@fn Brainfuck original, options}
+	{@fn compile code, options}
+		{@call pow into max_int 2, options.cell_width_bits}
+		{@inc by -1 max_int}
+		
+		{@// looping }
+		{@set char "["}
+		{@set replacement.[char] "{@while tape.[pointer]}"}
+		{@set char "]"}
+		{@set replacement.[char] "{@/}"}
+
+		{@// pointer moving }
+		{@set char "<"}
+		{@set replacement.[char] "{@inc by -1 pointer}"}
+		{@set char ">"}
+		{@set replacement.[char] "{@inc pointer}"}
+
+		{@// value increment/decrement (0-max-int)}
+		{@set char "-"}
+		{@set replacement.[char] "{@if tape.[pointer] is 0} {@set tape.[pointer] #{max_int}} {@else} {@inc by -1 tape.[pointer]} {@/}"}
+		{@set char "+"}
+		{@set replacement.[char] "{@if tape.[pointer] is #{max_int}} {@set tape.[pointer] 0} {@else} {@inc tape.[pointer]} {@/}"}
+
+		{@// input and output }
+		{@set char "."}
+		{@set replacement.[char] "{@call chr into tmp tape.[pointer]}{@echo tmp}"}
+		{@set char ","}
+		{@set replacement.[char] "{@set tape.[pointer] argv.0.[argn]}{@inc argn}"}
+
+		{@fn replacer_comments}
+			{@call trim into tmp argv.0.0}
+			{@if tmp}
+				{@return "{@// #{tmp}}"}
+			{@else}
+				{@return ""}
+			{@/}
+		{@/}
+
+
+		{@fn replacer_code}
+			{@set char argv.0.0}
+			{@return PARENT.replacement.[char]}
+		{@/}
+
+		{@if options.keep_comments}
+			{@call preg_replace_callback into tmp "@[^\[\]<>.,\+\-\r\n]+@", replacer_comments, code}
+		{@else}
+			{@call preg_replace into tmp "@[^\[\]<>.,\+\-\r\n]+@", "", code}
+		{@/}
+		
+		{@call preg_replace_callback into tmp "@[\[\]<>\.,\+\-]@", replacer_code, tmp}
+
+		{@return "{@set pointer 0}{@set tape null, null}{@set argn 0}\r\n#{tmp}"}
+	{@/}
+	
+	{@set defaults.keep_comments true}
+	{@set defaults.cell_width_bits 8}
+	{@each defaults as default key k}
+		{@if options has not k}
+			{@set options.[k] default}
+		{@/}
+	{@/}
+	
+	{@set compiled ""}
+	{@call compile into compiled original, options}
+	
+	
+	{@fn this.get_code}
+		{@return PARENT.compiled}
+	{@/}
+	
+	{@fn this.get_original}
+		{@return PARENT.original}
+	{@/}
+	
+	{@fn this.execute}
+		{@eval PARENT.compiled}
+	{@/}
+	
+	{@return this}
+{@/}
