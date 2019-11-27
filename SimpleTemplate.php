@@ -210,7 +210,7 @@ class SimpleTemplate_Compiler {
 	private $template = null;
 	
 	private $fn = null;
-	private $php = '';
+	private $php = '$_ = &$DATA;' . PHP_EOL;
 	
 	private static function render_var($name = null, $safe = true, $allow_ref = false){
 		// preg_match('@^\s*(?:(?<unsafe>U|unsafe)\s+)?(?<var>.*)$@', $name ?: self::$default_var_name, $bits);
@@ -892,7 +892,7 @@ PHP;
 
 // base class
 class SimpleTemplate {
-	private static $version = '0.81';
+	private static $version = '0.82';
 	
 	private $data = array();
 	private $settings = array(
