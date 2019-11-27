@@ -291,7 +291,7 @@ class SimpleTemplate_Compiler {
 				return (isset($bits['not']) && $bits['not'] !== '' ? '!': '') . '(' . sprintf($symbols[isset($bits['operation']) ? $bits['operation']: ''], self::parse_value($var1), self::parse_value($var2)) . ')';
 			},
 			'has' => function($data, $var1, $var2){
-				return ($data === 'not' ? '!': '') . 'array_key_exists((array)' . self::parse_value($var1) . ', ' . self::parse_value($var2) . ')';
+				return ($data === 'not' ? '!': '') . 'array_key_exists(' . self::parse_value($var2) . ', (array)' . self::parse_value($var1) . ')';
 			},
 			'isset' => function($data, $var1){
 				return ($data === 'not' ? '!': '') . 'isset(' . self::render_var($var1, false) . ')';
@@ -449,7 +449,7 @@ class SimpleTemplate_Compiler {
 				return $replacement['echol']('separator ' . $data);
 			},
 			'print' => function($data)use(&$replacement, &$brackets, &$tabs){
-				return $replacement['call']((strpos('into', $data)===0? 's' : '') . 'printf ' . $data);
+				return $replacement['call']((strpos('into', $data) === 0 ? 's' : '') . 'printf ' . $data);
 			},
 			'if' => function($data)use(&$replacement, &$brackets, &$tabs){
 				++$brackets;
@@ -486,7 +486,7 @@ class SimpleTemplate_Compiler {
 				
 				$vars_var = self::render_var($bits['var'], false);
 				$vars_as = self::render_var(isset($bits['as']) ? $bits['as'] : '', false);
-				$vars_key = self::render_var(isset($bits['key']) ? $bits['as'] : '__', false);
+				$vars_key = self::render_var(isset($bits['key']) ? $bits['key'] : '__', false);
 				
 				return <<<PHP
 {$tabs}// loop variables
