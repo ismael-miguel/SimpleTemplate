@@ -25,7 +25,7 @@
 		{@set char "."}
 		{@set replacement.[char] "{@call chr into tmp tape.[pointer]}{@echo tmp}"}
 		{@set char ","}
-		{@set replacement.[char] "{@set tape.[pointer] argv.0.[argn]}{@inc argn}"}
+		{@set replacement.[char] "{@call ord into tape.[pointer] argv.0.[argn]}{@inc argn}"}
 
 		{@fn replacer_comments}
 			{@call trim into tmp argv.0.0}
@@ -36,19 +36,13 @@
 			{@/}
 		{@/}
 
-
-		{@fn replacer_code}
-			{@set char argv.0.0}
-			{@return PARENT.replacement.[char]}
-		{@/}
-
 		{@if options.keep_comments}
 			{@call preg_replace_callback into tmp "@[^\[\]<>.,\+\-\r\n]+@", replacer_comments, code}
 		{@else}
 			{@call preg_replace into tmp "@[^\[\]<>.,\+\-\r\n]+@", "", code}
 		{@/}
 		
-		{@call preg_replace_callback into tmp "@[\[\]<>\.,\+\-]@", replacer_code, tmp}
+		{@call strtr into tmp tmp, replacement}
 
 		{@return "{@set pointer 0}{@set tape null, null}{@set argn 0}\r\n#{tmp}"}
 	{@/}
