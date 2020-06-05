@@ -477,23 +477,29 @@ class SimpleTemplate_Compiler {
 			'each' => function($data)use(&$replacement, &$brackets, &$tabs){
 				++$brackets;
 				
-				preg_match('@^(?<var>' . self::$regex['var'] . ')\s*(?:as\s*(?<as>' . self::$regex['var'] . ')(?:\s*key\s*(?<key>' . self::$regex['var'] . ')\s*)?)?$@', $data, $bits);
+				preg_match('@^(?<var>' . self::$regex['var_value'] . ')\s*(?:as\s*(?<as>' . self::$regex['var'] . ')(?:\s*key\s*(?<key>' . self::$regex['var'] . ')\s*)?)?$@', $data, $bits);
 				
 				static $count = 0;
 				
 				$var_name = self::$var_name;
 				$tmp_name = 'tmp_' . (++$count) . '_';
 				
-				$vars_var = self::render_var($bits['var'], false);
+				$vars_var = self::parse_value(isset($bits['var']) ? $bits['var'] : '_', false);
 				$vars_as = self::render_var(isset($bits['as']) ? $bits['as'] : '', false);
 				$vars_key = self::render_var(isset($bits['key']) ? $bits['key'] : '__', false);
 				
-				return <<<PHP
-{$tabs}// loop variables
+				if(self::is_var($vars_var))
+				{
+					return <<<PHP
+{$tabs}// ~ optimization unfeasable ~ variable used in the first argument
+{$tabs}// loop variables - variable
 {$tabs}\${$tmp_name}val = isset({$vars_var}) ? \${$tmp_name}val = &{$vars_var} : null;
 {$tabs}\${$tmp_name}keys = gettype({$vars_var}) == 'array'
 {$tabs}	? array_keys({$vars_var})
-{$tabs}	: array_keys(range(0, strlen(\${$tmp_name}val = \${$tmp_name}val . '') - 1));
+{$tabs}	: ((\${$tmp_name}val = \${$tmp_name}val . '')
+{$tabs}		? array_keys(range(0, strlen(\${$tmp_name}val = \${$tmp_name}val . '') - 1))
+{$tabs}		: array()
+{$tabs}	);
 {$tabs}\${$tmp_name}key_last = end(\${$tmp_name}keys);
 {$tabs}
 {$tabs}// loop
@@ -511,6 +517,72 @@ class SimpleTemplate_Compiler {
 {$tabs}	{$vars_key} = \${$tmp_name}key;
 {$tabs}	{$vars_as} = \${$tmp_name}val[\${$tmp_name}key];
 PHP;
+				}
+				else if($this->options['optimize'])
+				{
+					$keys = '';
+					
+					if($vars_var !== '""')
+					{
+						$keys = implode(
+							',',
+							range(
+								0,
+								strlen($vars_var) - ($vars_var[0] === '"' ? 3 : 1)
+							)
+						);
+					}
+					
+					return <<<PHP
+{$tabs}// ~ optimization ENABLED ~ \${$tmp_name}keys was inlined
+{$tabs}// loop variables - inline value
+{$tabs}\${$tmp_name}val = ({$vars_var}) . ''; // convert to string
+{$tabs}\${$tmp_name}keys = array({$keys});
+{$tabs}\${$tmp_name}key_last = end(\${$tmp_name}keys);
+{$tabs}
+{$tabs}// loop
+{$tabs}foreach(\${$tmp_name}keys as \${$tmp_name}index => \${$tmp_name}key){
+{$tabs}	\${$var_name}['loop'] = array(
+{$tabs}		'index' => \${$tmp_name}index,
+{$tabs}		'i' => \${$tmp_name}index,
+{$tabs}		'key' => \${$tmp_name}key,
+{$tabs}		'k' => \${$tmp_name}key,
+{$tabs}		'value' => \${$tmp_name}val[\${$tmp_name}key],
+{$tabs}		'v' => \${$tmp_name}val[\${$tmp_name}key],
+{$tabs}		'first' => \${$tmp_name}key === \${$tmp_name}keys[0],
+{$tabs}		'last' => \${$tmp_name}key === \${$tmp_name}key_last,
+{$tabs}	);
+{$tabs}	{$vars_key} = \${$tmp_name}key;
+{$tabs}	{$vars_as} = \${$tmp_name}val[\${$tmp_name}key];
+PHP;
+				}
+				else
+				{
+					return <<<PHP
+{$tabs}// ~ optimization DISABLED ~ \${$tmp_name}keys could be inlined
+{$tabs}// loop variables - inline value
+{$tabs}\${$tmp_name}val = ({$vars_var}) . ''; // convert to string
+{$tabs}\${$tmp_name}keys = \${$tmp_name}val
+{$tabs}	? array_keys(range(0, strlen(\${$tmp_name}val) - 1))
+{$tabs}	: array();
+{$tabs}\${$tmp_name}key_last = end(\${$tmp_name}keys);
+{$tabs}
+{$tabs}// loop
+{$tabs}foreach(\${$tmp_name}keys as \${$tmp_name}index => \${$tmp_name}key){
+{$tabs}	\${$var_name}['loop'] = array(
+{$tabs}		'index' => \${$tmp_name}index,
+{$tabs}		'i' => \${$tmp_name}index,
+{$tabs}		'key' => \${$tmp_name}key,
+{$tabs}		'k' => \${$tmp_name}key,
+{$tabs}		'value' => \${$tmp_name}val[\${$tmp_name}key],
+{$tabs}		'v' => \${$tmp_name}val[\${$tmp_name}key],
+{$tabs}		'first' => \${$tmp_name}key === \${$tmp_name}keys[0],
+{$tabs}		'last' => \${$tmp_name}key === \${$tmp_name}key_last,
+{$tabs}	);
+{$tabs}	{$vars_key} = \${$tmp_name}key;
+{$tabs}	{$vars_as} = \${$tmp_name}val[\${$tmp_name}key];
+PHP;
+				}
 			},
 			'while' => function($data)use(&$replacement, &$brackets, &$tabs){
 				++$brackets;
