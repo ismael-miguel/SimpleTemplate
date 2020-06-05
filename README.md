@@ -143,9 +143,10 @@ The variable `loop` will contain everything about the current iteration of a loo
      
  - `each`
  
-     Structure: `each <array> as <var>[ key <key>]`
+     Structure: `each <value> as <var>[ key <key>]`
      
-     Loops over each element in the array `<array>`.
+     Loops over each element in `<value>`, if it is a variable.  
+     The `<value>` can be a string or a number (or a variable with a string or number), being converted to string at all times.
      
      Each value will be available on the variable `<var>` (you can use array indexes like `argv.0` too).
      
