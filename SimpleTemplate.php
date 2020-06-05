@@ -964,7 +964,7 @@ PHP;
 
 // base class
 class SimpleTemplate {
-	private static $version = '0.82';
+	private static $version = '0.83';
 	
 	private $data = array();
 	private $settings = array(
