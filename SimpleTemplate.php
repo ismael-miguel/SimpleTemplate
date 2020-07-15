@@ -764,7 +764,7 @@ PHP;
 					   . $tabs . '}, array(&$' . self::$var_name . '));';
 			},
 			'return' => function($data)use(&$replacement, &$brackets, &$tabs){
-				return $tabs . 'return ' . ($data ? self::parse_value($data): '').';';
+				return $tabs . 'return' . ($data || $data === '0' ? ' ' . self::parse_value($data) : '') . ';';
 			},
 			'inc' => function($data)use(&$replacement, &$brackets, &$tabs){
 				preg_match('@^(?:\s*by\s*(?<by>' . self::$regex['var_value'] . ')\s*)?(?<values>.*?)$@', $data, $bits);
@@ -964,7 +964,7 @@ PHP;
 
 // base class
 class SimpleTemplate {
-	private static $version = '0.83';
+	private static $version = '0.84';
 	
 	private $data = array();
 	private $settings = array(
